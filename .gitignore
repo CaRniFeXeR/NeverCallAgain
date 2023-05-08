@@ -162,3 +162,5 @@ cython_debug/
 .vscode/*
 data/*
 ngc-cli
+*.wav
+*.mp3

@@ -4,35 +4,20 @@ from flask import Flask, request, Response, jsonify, send_from_directory
 import flask
 import numpy as np
 import sounddevice as sd
-import pyaudio
-import torch
-import torchaudio
+import queue
 from src.backend.wav_handler import get_wave_header
-# from .chatgpt import ChatGPT
-# from .TtS import TextToSpeech
-from src.backend.chatgpt import ChatGPT
-from src.backend.TtS import TextToSpeech
+from .chatgpt import ChatGPT
+from .TtS import TextToSpeech
+import time
+# from src.backend.chatgpt import ChatGPT
+# from src.backend.TtS import TextToSpeech
 
 app = Flask(__name__, static_folder="./../frontend")
 
 # Create a byte stream
 output_stream = io.BytesIO()
-
-# Define a callback function to write audio data to the byte stream
-def callback(in_data, frame_count, time_info, status):
-    output_stream.write(in_data)
-    return (None, pyaudio.paContinue)
-
-
-def open_stream():
-    p = pyaudio.PyAudio()
-    app.stream = p.open(format=pyaudio.paFloat32,
-                    channels=1,
-                    rate=22050,
-                    output=True,
-                    stream_callback=callback,
-                    frames_per_buffer=1024)
-
+data_queue = queue.Queue()
+app.writing_data = False
 
 tts = TextToSpeech()
 
@@ -50,16 +35,26 @@ def stream_mp3():
 
 def generate_audio():
         print("generate_audio")
-        output_stream.seek(0)
-        with open('generate_audio.wav', 'wb') as f:
-            data = output_stream.read(1024)
-            while data:
+        if not app.writing_data and data_queue.empty():
+                    time.sleep(2) #lol hack
+        while not data_queue.empty():
+                data = data_queue.get()
                 yield data
-                f.write(data)
-                data = output_stream.read(1024)
+                if app.writing_data and data_queue.empty():
+                    time.sleep(2) #lol hack
+        # seek_idx = 0
+        # with open('generate_audio.wav', 'wb') as f:
+            
+            # output_stream.seek(seek_idx)
+            # data = output_stream.read(1024)
+            # while data:
+            #     yield data
+            #     f.write(data)
+            #     seek_idx += 1024
+            #     output_stream.seek(seek_idx)
+            #     data = output_stream.read(1024)
         
         print("finished gen audio")
-        print(np.array(output_stream.getvalue()).shape)
 
 
 @app.route('/stream_audio')
@@ -80,13 +75,18 @@ def submit():
     text_input = data['text_input']
     chatgpt = ChatGPT()
     output_stream.write(get_wave_header())
+    app.writing_data = True
+    data_queue.put(get_wave_header())
     for delta in chatgpt.get_response_by_delimiter(text_input):
         audio_segment = tts.text_to_speech_numpy_pmc(delta)
         print(delta)
         bytes = audio_segment.tobytes()
+        output_stream.seek(0,io.SEEK_END)
         output_stream.write(bytes)
+        data_queue.put(bytes)
     # print(result)
     # output_stream.close()bytes
+    app.writing_data = False
  
     response = {'message': 'Data received successfully'}
     return jsonify(response)
@@ -104,4 +104,4 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run(host="172.25.106.215")
+    app.run(host="172.21.146.137")
