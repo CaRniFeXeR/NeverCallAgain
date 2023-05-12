@@ -9,6 +9,7 @@ import os
 from wav_handler import get_wave_header, split_wave_bytes_into_chunks
 from chatgpt import ChatGPT
 from TtS import TextToSpeech
+from voice_handler import VoiceHandler
 import time
 
 # from src.backend.chatgpt import ChatGPT
@@ -22,19 +23,6 @@ data_queue = queue.Queue()
 app.writing_data = False
 
 tts = TextToSpeech()
-
-
-@app.route('/stream_mp3')
-def stream_mp3():
-    def gen():
-        with open('german_speech1.wav', 'rb') as f:
-            data = f.read(1024)
-            while data:
-                yield data
-                data = f.read(1024)
-                # output_stream.write(data)
-
-    return Response(gen(), mimetype='audio/x-wav')
 
 
 def generate_audio():
@@ -63,7 +51,6 @@ def record_audio():
     audio_data = request.data
     sd.play(audio_data, 44100)
     return 'OK'
-
 
 @app.route('/submit', methods=['POST'])
 def submit():
@@ -100,6 +87,33 @@ def index():
     print(app.instance_path)
     return flask.send_file('./../frontend/index.html')
 
+@app.route('/recieve_audio_input')
+def recieve_audio_input(data):
+    # Convert the audio data to a numpy array
+    audio = np.frombuffer(data, dtype=np.float32)
+
+
+@app.route('/audio', methods=['POST'])
+def handle_audio_stream():
+    # Get the content type and length of the incoming request
+    content_type = request.headers.get('Content-Type')
+    content_length = int(request.headers.get('Content-Length'))
+
+    # Check that the request is for audio data
+    if content_type == 'audio/raw' and content_length > 0:
+        # Open a stream to read the incoming audio data
+        audio_stream = request.stream
+
+        # Process the audio data in real-time
+        voicehandler = VoiceHandler()
+        voicehandler.handle_input_stream(audio_stream)
+
+        # Return a response to the client
+        return 'Audio data received'
+
+    # If the request is not for audio data, return an error response
+    else:
+        return 'Invalid request', 400
 
 if __name__ == '__main__':
     app.run(host=os.environ.get("FLASK_HOST_IP", "localhost"))
