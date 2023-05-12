@@ -1,5 +1,7 @@
 import struct
 
+import numpy as np
+
 def get_wave_header(num_channels = 1, bits_per_sample = 32, sample_rate = 22050, len_bytes = 0):
 
     # sample_rate = 22050  # example sample rate
@@ -28,3 +30,13 @@ def get_wave_header(num_channels = 1, bits_per_sample = 32, sample_rate = 22050,
                             len_bytes)
     
     return wav_header
+
+def split_wave_bytes_into_chunks(wave_bytes : np.ndarray, chunk_size : int = 1024):
+    """
+    Splits a byte array into chunks of size chunk_size
+    """
+    num_chunks = len(wave_bytes) // chunk_size
+    for i in range(num_chunks):
+        yield wave_bytes[i*chunk_size:(i+1)*chunk_size]
+    if len(wave_bytes) % chunk_size != 0:
+        yield wave_bytes[num_chunks*chunk_size:]

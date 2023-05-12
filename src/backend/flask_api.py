@@ -5,7 +5,8 @@ import flask
 import numpy as np
 import sounddevice as sd
 import queue
-from src.backend.wav_handler import get_wave_header
+import os
+from .wav_handler import get_wave_header, split_wave_bytes_into_chunks
 from .chatgpt import ChatGPT
 from .TtS import TextToSpeech
 import time
@@ -15,7 +16,7 @@ import time
 app = Flask(__name__, static_folder="./../frontend")
 
 # Create a byte stream
-output_stream = io.BytesIO()
+# output_stream = io.BytesIO()
 data_queue = queue.Queue()
 app.writing_data = False
 
@@ -35,24 +36,15 @@ def stream_mp3():
 
 def generate_audio():
         print("generate_audio")
+        time.sleep(1)
         if not app.writing_data and data_queue.empty():
-                    time.sleep(2) #lol hack
-        while not data_queue.empty():
-                data = data_queue.get()
-                yield data
+                    time.sleep(1) #lol hack
+        while app.writing_data or not data_queue.empty():
+                if not data_queue.empty():
+                    data = data_queue.get()
+                    yield data
                 if app.writing_data and data_queue.empty():
-                    time.sleep(2) #lol hack
-        # seek_idx = 0
-        # with open('generate_audio.wav', 'wb') as f:
-            
-            # output_stream.seek(seek_idx)
-            # data = output_stream.read(1024)
-            # while data:
-            #     yield data
-            #     f.write(data)
-            #     seek_idx += 1024
-            #     output_stream.seek(seek_idx)
-            #     data = output_stream.read(1024)
+                    time.sleep(1) #lol hack
         
         print("finished gen audio")
 
@@ -74,16 +66,16 @@ def submit():
     data = request.json
     text_input = data['text_input']
     chatgpt = ChatGPT()
-    output_stream.write(get_wave_header())
+    # output_stream.write(get_wave_header())
     app.writing_data = True
     data_queue.put(get_wave_header())
     for delta in chatgpt.get_response_by_delimiter(text_input):
         audio_segment = tts.text_to_speech_numpy_pmc(delta)
         print(delta)
         bytes = audio_segment.tobytes()
-        output_stream.seek(0,io.SEEK_END)
-        output_stream.write(bytes)
-        data_queue.put(bytes)
+  
+        for byte_chunk in split_wave_bytes_into_chunks(bytes):
+            data_queue.put(byte_chunk)
     # print(result)
     # output_stream.close()bytes
     app.writing_data = False
@@ -104,4 +96,4 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run(host="172.21.146.137")
+    app.run(host=os.environ["FLASK_HOST_IP"])

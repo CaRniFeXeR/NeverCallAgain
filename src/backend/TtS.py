@@ -16,7 +16,7 @@ class TextToSpeech():
         self.vocoder.eval()
         self.vocoder.to("cuda")
 
-    def text_to_speech(self, text: str, pace = 0.8) -> torch.Tensor:
+    def text_to_speech(self, text: str, pace = 0.9) -> torch.Tensor:
         speaker_id = 0
         with torch.no_grad():
             parsed = self.spec_gen.parse(text)
