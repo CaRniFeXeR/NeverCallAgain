@@ -164,3 +164,4 @@ data/*
 ngc-cli
 *.wav
 *.mp3
+Makefile
