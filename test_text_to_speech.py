@@ -1,13 +1,19 @@
 # Load spectrogram generator
 from nemo.collections.tts.models import FastPitchModel
-spec_generator = FastPitchModel.restore_from("data/model_storage/tts_de_fastpitch_thorstens2210.nemo")
+
+spec_generator = FastPitchModel.restore_from(
+    "data/model_storage/tts_de_fastpitch_thorstens2210.nemo"
+)
 spec_generator.eval()
 spec_generator.to("cuda")
 
 # Load Vocoder
 from nemo.collections.tts.models import HifiGanModel
+
 # model = HifiGanModel.from_pretrained(model_name="tts_de_hui_hifigan_ft_fastpitch_multispeaker_5")
-model = HifiGanModel.restore_from("data/model_storage/tts_de_hifigan_thorstens2210.nemo")
+model = HifiGanModel.restore_from(
+    "data/model_storage/tts_de_hifigan_thorstens2210.nemo"
+)
 model.eval()
 model.to("cuda")
 
@@ -17,12 +23,13 @@ start_time = time.time()
 
 # Generate audio
 import torchaudio
+
 to_parse = "Guten Tag                            Ich möchte gerne für Herrn Julian Harbort einen Termin ausmachen.                               Haben Sie nächste Woche Mittwoch um 9 Uhr noch einen Platz frei?"
 to_parse = """
 Es war ein gewöhnlicher Morgen, als ich den Hörer abnahm und die Praxis meines Arztes anrief. Ich musste einen Termin für meinen Freund Julian Harbort vereinbaren,
  dessen Zustand eine dringende ärztliche Untersuchung erforderte."""
- # Ein leichtes Beben erfasste mich, als ich die Stimme des Arztes hörte, dessen Autorität und Weisheit ich bewunderte.
- # Ich fragte ihn, ob es möglich wäre, einen Termin für Julian am nächsten Mittwoch um 9 Uhr zu vereinbaren.
+# Ein leichtes Beben erfasste mich, als ich die Stimme des Arztes hörte, dessen Autorität und Weisheit ich bewunderte.
+# Ich fragte ihn, ob es möglich wäre, einen Termin für Julian am nächsten Mittwoch um 9 Uhr zu vereinbaren.
 #    """
 s = """
      Ich gab dem Arzt den Namen meines Freundes und seine Kontaktdaten, falls weitere Informationen benötigt würden. Der Arzt beruhigte mich und sagte, dass er alles im Griff hätte.'Vielen Dank', sagte ich erleichtert. 
@@ -31,11 +38,13 @@ s = """
      """
 parsed = spec_generator.parse(to_parse)
 speaker_id = 0
-spectrogram = spec_generator.generate_spectrogram(tokens=parsed, speaker=speaker_id, pace = 0.7)
+spectrogram = spec_generator.generate_spectrogram(
+    tokens=parsed, speaker=speaker_id, pace=0.7
+)
 audio = model.convert_spectrogram_to_audio(spec=spectrogram)
 
 # Save the audio to disk in a file called speech.wav
-torchaudio.save('german_speech2.wav', audio.cpu(), 22050)   
+torchaudio.save("german_speech2.wav", audio.cpu(), 22050)
 
 end_time = time.time()
 elapsed_time = end_time - start_time
