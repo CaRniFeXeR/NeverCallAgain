@@ -72,6 +72,15 @@
 
     <button
       class="create-btn"
+      @click="incrementdatetimeCount"
+      ref="incrementdatetimeCount"
+      :disabled="this.datetimeCount >= 3"
+    >
+      Add DateTime Option
+    </button>
+
+    <button
+      class="create-btn"
       @click="emitCreateCall"
       ref="createCallBtn"
       :disabled="!allFieldsFilled"
@@ -96,7 +105,7 @@ export default {
       receiver_telnr: "",
       initiator_name: "",
       possibleDates: [],
-      datetimeCount: 3,
+      datetimeCount: 1,
     };
   },
 
@@ -131,6 +140,9 @@ export default {
     onOptionSelected(option) {
       this.selectedOption = option;
       console.log(option);
+    },
+    incrementdatetimeCount() {
+      this.datetimeCount++;
     },
   },
 };
