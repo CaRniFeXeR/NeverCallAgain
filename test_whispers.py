@@ -1,4 +1,5 @@
 import time
+
 import torch
 
 # from datasets import load_dataset
@@ -7,11 +8,17 @@ from transformers import pipeline
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Load pipeline
-#big, small etc
-pipe = pipeline("automatic-speech-recognition", model="bofenghuang/whisper-small-cv11-german", device=device)
+# big, small etc
+pipe = pipeline(
+    "automatic-speech-recognition",
+    model="bofenghuang/whisper-small-cv11-german",
+    device=device,
+)
 
 # NB: set forced_decoder_ids for generation utils
-pipe.model.config.forced_decoder_ids = pipe.tokenizer.get_decoder_prompt_ids(language="de", task="transcribe")
+pipe.model.config.forced_decoder_ids = pipe.tokenizer.get_decoder_prompt_ids(
+    language="de", task="transcribe"
+)
 pipe.model.eval()
 
 # NB: decoding option
@@ -29,6 +36,7 @@ pipe.model.config.max_length = 225 + 1
 start_time = time.time()
 
 import soundfile as sf
+
 # load wave file from disk
 waveform, sr = sf.read("out.wav")
 

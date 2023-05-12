@@ -7,10 +7,10 @@ from pathlib import Path
 import flask
 import numpy as np
 import sounddevice as sd
-from voice_handler import VoiceHandler
 from chatgpt import ChatGPT
 from flask import Flask, Response, jsonify, request, send_from_directory
 from TtS import TextToSpeech
+from voice_handler import VoiceHandler
 from wav_handler import get_wave_header, split_wave_bytes_into_chunks
 
 # from src.backend.chatgpt import ChatGPT
@@ -23,7 +23,7 @@ app = Flask(__name__, static_folder="./../frontend")
 data_queue = queue.Queue()
 app.writing_data = False
 
-tts = TextToSpeech()
+tts = TextToSpeech() 
 
 
 def generate_audio():
@@ -52,7 +52,8 @@ def record_audio():
     sd.play(audio_data, 44100)
     return "OK"
 
-@app.route('/submit', methods=['POST'])
+
+@app.route("/submit", methods=["POST"])
 def submit():
     data = request.json
     text_input = data["text_input"]
@@ -86,20 +87,21 @@ def index():
     print(app.instance_path)
     return flask.send_file("./../frontend/index.html")
 
-@app.route('/recieve_audio_input')
+
+@app.route("/recieve_audio_input")
 def recieve_audio_input(data):
     # Convert the audio data to a numpy array
     audio = np.frombuffer(data, dtype=np.float32)
 
 
-@app.route('/audio', methods=['POST'])
+@app.route("/audio", methods=["POST"])
 def handle_audio_stream():
     # Get the content type and length of the incoming request
-    content_type = request.headers.get('Content-Type')
-    content_length = int(request.headers.get('Content-Length'))
+    content_type = request.headers.get("Content-Type")
+    content_length = int(request.headers.get("Content-Length"))
 
     # Check that the request is for audio data
-    if content_type == 'audio/raw' and content_length > 0:
+    if content_type == "audio/raw" and content_length > 0:
         # Open a stream to read the incoming audio data
         audio_stream = request.stream
 
@@ -108,11 +110,12 @@ def handle_audio_stream():
         voicehandler.handle_input_stream(audio_stream)
 
         # Return a response to the client
-        return 'Audio data received'
+        return "Audio data received"
 
     # If the request is not for audio data, return an error response
     else:
-        return 'Invalid request', 400
+        return "Invalid request", 400
+
 
 if __name__ == "__main__":
     app.run(host=os.environ.get("FLASK_HOST_IP", "localhost"))
