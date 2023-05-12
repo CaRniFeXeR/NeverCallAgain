@@ -1,16 +1,17 @@
 import io
+import os
+import queue
+import time
 from pathlib import Path
-from flask import Flask, request, Response, jsonify, send_from_directory
+
 import flask
 import numpy as np
 import sounddevice as sd
-import queue
-import os
-from wav_handler import get_wave_header, split_wave_bytes_into_chunks
-from chatgpt import ChatGPT
-from TtS import TextToSpeech
 from voice_handler import VoiceHandler
-import time
+from chatgpt import ChatGPT
+from flask import Flask, Response, jsonify, request, send_from_directory
+from TtS import TextToSpeech
+from wav_handler import get_wave_header, split_wave_bytes_into_chunks
 
 # from src.backend.chatgpt import ChatGPT
 # from src.backend.TtS import TextToSpeech
@@ -40,22 +41,21 @@ def generate_audio():
     print("finished gen audio")
 
 
-@app.route('/stream_audio')
+@app.route("/stream_audio")
 def stream_audio():
-    return Response(generate_audio(),
-                    mimetype='audio/x-wav')
+    return Response(generate_audio(), mimetype="audio/x-wav")
 
 
-@app.route('/record_audio', methods=['POST'])
+@app.route("/record_audio", methods=["POST"])
 def record_audio():
     audio_data = request.data
     sd.play(audio_data, 44100)
-    return 'OK'
+    return "OK"
 
 @app.route('/submit', methods=['POST'])
 def submit():
     data = request.json
-    text_input = data['text_input']
+    text_input = data["text_input"]
     chatgpt = ChatGPT()
     # output_stream.write(get_wave_header())
     app.writing_data = True
@@ -71,21 +71,20 @@ def submit():
     # output_stream.close()bytes
     app.writing_data = False
 
-    response = {'message': 'Data received successfully'}
+    response = {"message": "Data received successfully"}
     return jsonify(response)
 
 
-@app.route('/static/<path:filename>')
+@app.route("/static/<path:filename>")
 def return_client_files(filename: str):
     return send_from_directory("./../frontend", filename)
 
 
-@app.route('/')
+@app.route("/")
 def index():
-    """ Displays the index page accessible at '/'
-    """
+    """Displays the index page accessible at '/'"""
     print(app.instance_path)
-    return flask.send_file('./../frontend/index.html')
+    return flask.send_file("./../frontend/index.html")
 
 @app.route('/recieve_audio_input')
 def recieve_audio_input(data):
@@ -115,5 +114,5 @@ def handle_audio_stream():
     else:
         return 'Invalid request', 400
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(host=os.environ.get("FLASK_HOST_IP", "localhost"))

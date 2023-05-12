@@ -1,14 +1,19 @@
 # Load spectrogram generator
 from nemo.collections.tts.models import FastPitchModel
-import torch
-spec_generator = FastPitchModel.restore_from("data/model_storage/tts_de_fastpitch_thorstens2210.nemo")
+
+spec_generator = FastPitchModel.restore_from(
+    "data/model_storage/tts_de_fastpitch_thorstens2210.nemo"
+)
 spec_generator.eval()
 spec_generator.to("cuda")
 
 # Load Vocoder
 from nemo.collections.tts.models import HifiGanModel
+
 # model = HifiGanModel.from_pretrained(model_name="tts_de_hui_hifigan_ft_fastpitch_multispeaker_5")
-model = HifiGanModel.restore_from("data/model_storage/tts_de_hifigan_thorstens2210.nemo")
+model = HifiGanModel.restore_from(
+    "data/model_storage/tts_de_hifigan_thorstens2210.nemo"
+)
 model.eval()
 model.to("cuda")
 
