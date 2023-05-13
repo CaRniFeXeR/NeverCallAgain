@@ -27,29 +27,30 @@ class _StateMachine:
     - start_opener_speaking
     - start_speaking
     - speaking
-    - [waiting]
+    - initator
     - call_ended
     - call_interrupted
     """
+    # pov initator
     VALID_STATES = ["call_pending",
                     "waiting_in_queue",
                     "start_opener_speaking",
                     "speaking",
                     "start_speaking",
-                    "waiting",
+                    "listening",
                     "call_ended",
                     "call_interrupted"]
 
     # assuming 0.25 seconds per chunk, 1.5 seconds of silence is 6 chunks
     def __init__(self, max_silence_counter: int = 6, max_speaker_counter: int = 3) -> None:
         self.state = "call_pending"
-        # "waiting" as a toggle, we check each "speech chunk" if the opposite is speaking
-        #  if we are in "waiting", we transition to "speaking", once the counter reaches max_counter_silence
+        # "listening" as a toggle, we check each "speech chunk" if the opposite is speaking
+        #  if we are in "listening", we transition to "speaking", once the counter reaches max_counter_silence
         #  "wait mode" is initated again, once our transcript is empty
-        self.silence_counter = 0
-        self.speaker_counter = 0
-        self.max_silence_counter = max_silence_counter
-        self.max_speaker_counter = max_speaker_counter
+        self.receiver_silence_counter = 0
+        self.receiver_speaker_counter = 0
+        self.max_receiver_silence_counter = max_silence_counter
+        self.max_receiver_speaker_counter = max_speaker_counter
 
     @property
     def state(self) -> str:
@@ -63,27 +64,27 @@ class _StateMachine:
         self._state = new_state
 
     @property
-    def silence_counter(self):
+    def receiver_silence_counter(self):
         return self._silence_counter
 
-    @silence_counter.setter
-    def silence_counter(self, new_counter=0):
+    @receiver_silence_counter.setter
+    def receiver_silence_counter(self, new_counter=0):
         self._silence_counter = new_counter
 
     @property
-    def speaker_counter(self):
+    def receiver_speaker_counter(self):
         return self._speaker_counter
 
-    @speaker_counter.setter
-    def speaker_counter(self, new_counter=0):
+    @receiver_speaker_counter.setter
+    def receiver_speaker_counter(self, new_counter=0):
         self._speaker_counter = new_counter
 
     def inc_receiver_silence_counter(self) -> None:
         print("Incrementing silence counter")
-        self.silence_counter += 1
+        self.receiver_silence_counter += 1
 
     def inc_receiver_speaking_counter(self) -> None:
-        self.speaker_counter += 1
+        self.receiver_speaker_counter += 1
 
     def reset_receiver_silence_counter(self) -> None:
         self._silence_counter = 0
@@ -143,14 +144,14 @@ class ChunkHandler:
             self.state_machine.inc_receiver_speaking_counter()
         else:
             self.state_machine.reset_receiver_speaking_counter()
-        return not self.handle_initator_waiting(chunk)
+        return receiver_speaking
 
     def handle_queue_wait(self, chunk: np.ndarray) -> bool:
         # todo: implement proper queue detection
         return self.handle_initator_waiting(chunk)
 
     def _can_resume_speaking(self):
-        can_speak = self.state_machine.silence_counter >= self.state_machine.max_silence_counter
+        can_speak = self.state_machine.receiver_silence_counter >= self.state_machine.max_receiver_silence_counter
         if can_speak:
             if self.state_machine.state == "waiting_in_queue":
                 self.state_machine.state = "start_opener_speaking"
@@ -160,9 +161,9 @@ class ChunkHandler:
         return can_speak
 
     def _should_stop_speaking(self):
-        should_stop = self.state_machine.speaker_counter >= self.state_machine.max_speaker_counter
+        should_stop = self.state_machine.receiver_speaker_counter >= self.state_machine.max_receiver_speaker_counter
         if should_stop:
-            self.state_machine.state = "waiting"
+            self.state_machine.state = "listening"
             self.state_machine.reset_receiver_speaking_counter()
         return should_stop
 
@@ -171,7 +172,7 @@ class ChunkHandler:
         self.state_machine.state = "start_opener_speaking"
 
     def transition_to_wait(self):
-        self.state_machine.state = "waiting"
+        self.state_machine.state = "listening"
 
     # todo: chunk implictly assumed to be from caller or receive, depending on state?
     #  should we support the case when caller and receiver talk simultanously?
@@ -190,7 +191,7 @@ class ChunkHandler:
         elif self.state_machine.state in ["start_speaking", "start_opener_speaking"]:
             can_speak = True
             self.state_machine.state = "speaking"
-        elif self.state_machine.state == "waiting":
+        elif self.state_machine.state == "listening":
             if self.handle_initator_waiting(chunk):
                 can_speak = self._can_resume_speaking()
         # todo: ending call
