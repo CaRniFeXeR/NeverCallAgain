@@ -162,7 +162,11 @@ export default {
         dateTimes
       );
 
-      this.$emit("create-call", call);
+      if (state_of_call == 0) {
+        this.$emit("save-call", call);
+      } else if (state_of_call == 1) {
+        this.$emit("create-call", call);
+      }
     },
     checkInputs() {
       if (this.allFieldsFilled) {

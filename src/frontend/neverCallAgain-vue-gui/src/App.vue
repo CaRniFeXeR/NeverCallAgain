@@ -32,11 +32,9 @@
   <CreateCall
     v-if="div_display_state === 1"
     @create-call="createCall"
+    @save-call="onlySaveCall"
   ></CreateCall>
 
-  <!-- Slide has to be beneath grid in order to be clickable
-  https://github.com/mbj36/vue-burger-menu
-  -->
   <Slide right :closeOnNavigation="true">
     <a id="home" href="#">
       <span>Home</span>
@@ -124,6 +122,9 @@ export default {
 
     async createCall(call) {
       console.log("schedule appointment with param: ", call);
+      this.div_display_state = 0;
+      this.calls.push(call);
+      this.calls_to_display = this.calls;
 
       let url = this.baseUrlBackend + "start_call";
 
@@ -135,10 +136,11 @@ export default {
         body: JSON.stringify(call),
       });
 
-      this.div_display_state = 0;
-
       return response;
+    },
 
+    onlySaveCall(call) {
+      this.div_display_state = 0;
       this.calls.push(call);
       this.calls_to_display = this.calls;
     },
