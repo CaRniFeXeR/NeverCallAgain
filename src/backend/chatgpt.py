@@ -7,14 +7,9 @@ import openai
 # print(openai.Model.list())
 
 
-def test(text):
-    text = text.replace("\n", " ")
-
-
 class ChatGPT:
-    pass
-
     def __init__(self) -> None:
+        self.messages = []
         openai.api_key = os.environ["OPENAI_API_KEY"]
 
     def get_response(self, message: str) -> Generator[Tuple[str, str], None, None]:
@@ -28,6 +23,27 @@ class ChatGPT:
 
         for completion in completions:
             response = completion["choices"][0]["delta"]
+
+            if "content" in response.keys():
+                delta = response["content"]
+                result_str += " " + delta
+                yield (delta, result_str)
+
+    def get_response_with_history(
+        self, message: str
+    ) -> Generator[Tuple[str, str], None, None]:
+        self.messages.append({"role": "user", "content": message})
+        completions = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=self.messages,
+            stream=True,
+        )
+
+        result_str = ""
+
+        for completion in completions:
+            response = completion["choices"][0]["delta"]
+
             if "content" in response.keys():
                 delta = response["content"]
                 result_str += " " + delta
