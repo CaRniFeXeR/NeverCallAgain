@@ -68,6 +68,8 @@ class _StateMachine:
     @state.setter
     def state(self, new_state) -> None:
         assert new_state in self.VALID_STATES, f"Invalid state {new_state}"
+        if hasattr(self, "_state"):
+            assert self._state != "call_ended", "Call has already ended"
         curr_state = self._state if hasattr(self, "_state") else "Init state"
         print("Transitioning from state {} to state {}".format(curr_state, new_state))
         self._state = new_state
@@ -182,8 +184,8 @@ class ChunkHandler:
         # TODO queue waiting skipped for now ..
         self.state_machine.state = "start_opener_speaking"
 
-    def transition_to_wait(self):
-        self.state_machine.state = "listening"
+    def transition_to_end(self):
+        self.state_machine.state = "call_ended"
 
     # todo: chunk implictly assumed to be from caller or receive, depending on state?
     #  should we support the case when caller and receiver talk simultanously?
@@ -206,5 +208,7 @@ class ChunkHandler:
         elif self.state_machine.state == "listening":
             if self.handle_initator_waiting(chunk):
                 can_speak = self._can_resume_speaking()
+        elif self.state_machine == "call_ended":
+            can_speak = False
         # todo: ending call
         return chunk, can_speak
