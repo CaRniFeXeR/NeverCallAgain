@@ -44,7 +44,7 @@ def split_wave_bytes_into_chunks(wave_bytes: np.ndarray, chunk_size: int = 1024)
     if len(wave_bytes) % chunk_size != 0:
         yield wave_bytes[num_chunks * chunk_size :]
 
-def get_empty_wave_bytes(header = True, chunk_size = 1024, n_chunks = 1):
+def get_empty_wave_bytes(header = True, chunk_size = 1000, n_chunks = 1):
     data =  b"\x00" * chunk_size * n_chunks
     if header:
         data = get_wave_header() + data
