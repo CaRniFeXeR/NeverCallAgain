@@ -50,8 +50,8 @@ def generate_audio():
         if not data_queue.empty():
             data = data_queue.get()
             yield data
-            stream_count += 1
-            print(f"streaming audio back {stream_count}")
+            # stream_count += 1
+            # print(f"streaming audio back {stream_count}")
         if app.writing_data and data_queue.empty():
             time.sleep(3)  # lol hack
             print("wating for new data to stream")
@@ -130,7 +130,8 @@ def recieve_audio():
 
 
     if chunk_handler.state_machine.state == "waiting_in_queue":
-        print("waiting in queue")
+        pass
+        # print("waiting in queue")
         # chunk_handler.transition_to_wait() #TODO maybe remove in future
     elif chunk_handler.state_machine.state == "start_opener_speaking":
         
@@ -152,17 +153,19 @@ def recieve_audio():
         conv_handler.append_initiator_text(gpt_answer)
         
     elif chunk_handler.state_machine.state == "speaking":
-        print("still speaking")
+        pass
         # n_chunks = data_np.shape[0] // 1000
         # write_to_queue(get_empty_wave_bytes(header=False, chunk_size=1000, n_chunks=n_chunks))
         # chunk_handler.transition_to_wait()
 
 
-    elif chunk_handler.state_machine.state == "waiting":
+    elif chunk_handler.state_machine.state == "listening":
         #listen to input
-        print("waiting")
+        # print("waiting")
         transcript = voice_handler.handle_input_byte_string(data_with_head)
-        if transcript is not None:
+        if transcript is None:
+            print("nothing to transcript")
+        else:
             conv_handler.append_receiver_text(transcript)
             print(transcript)
             n_chunks = data_np.shape[0] // 1000
