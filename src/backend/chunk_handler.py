@@ -38,7 +38,8 @@ class _StateMachine:
                     "call_ended",
                     "call_interrupted"]
 
-    def __init__(self, max_counter_silence: int = 3) -> None:
+    # assuming 0.25 seconds per chunk, 1.5 seconds of silence is 6 chunks
+    def __init__(self, max_counter_silence: int = 6) -> None:
         self.state = "call_pending"
         # "waiting" as a toggle, we check each "speech chunk" if the opposite is speaking
         #  if we are in "waiting", we transition to "speaking", once the counter reaches max_counter_silence
@@ -96,7 +97,7 @@ class ChunkHandler:
         pv_access_key = os.environ.get("PICOVOICE_API_KEY")
         assert pv_access_key, "PICOVOICE_API_KEY environment variable not set"
         self.cobra = pvcobra.create(access_key=pv_access_key)
-        self.chunk_length = chunk_config.get("chunk_length", 4096)
+        self.chunk_length = chunk_config.get("chunk_length", 4000)
 
     @staticmethod
     def is_silent_chunk(
