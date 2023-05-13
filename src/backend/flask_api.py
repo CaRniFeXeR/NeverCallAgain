@@ -92,6 +92,14 @@ def submit():
 @app.route("/start_call", methods=["POST"])
 def start_call():
     chunk_handler.start_call()
+    opener_text = "Hallo ich möchte gerne einen Termin für Florian Pfiel ausmachen. Haben Sie nächsten Donnerstag um 9:30 Uhr zeit?"
+    conv_handler.append_initiator_text(opener_text)
+
+    audio_segment = tts.text_to_speech_numpy_pmc(opener_text)
+    # print(delta)
+    bytes = audio_segment.tobytes()
+
+    write_to_queue(bytes)
 
 
 @app.route("/static/<path:filename>")
@@ -124,15 +132,8 @@ def recieve_audio():
     if chunk_handler.state_machine.state == "waiting_in_queue":
         print("waiting in queue")
     elif chunk_handler.state_machine.state == "start_opener_speaking":
-        opener_text = "Hallo ich möchte gerne einen Termin für Florian Pfiel ausmachen. Haben Sie nächsten Donnerstag um 9:30 Uhr zeit?"
-        conv_handler.append_initiator_text(opener_text)
-
-        audio_segment = tts.text_to_speech_numpy_pmc(opener_text)
-        # print(delta)
-        bytes = audio_segment.tobytes()
-
-        write_to_queue(bytes)
         
+        #moved to /start_call for now ..
         chunk_handler.transition_to_wait()
     elif chunk_handler.state_machine.state == "start_speaking":
          
@@ -189,17 +190,6 @@ def recieve_audio_old():
     response.headers.add('Access-Control-Allow-Origin', '*')
 
     return response
-
-
-# @sockets.route("/recieve_audio_input")
-# def handle_audio_stream(ws):
-#     print("reciving audio..")
-#     while not ws.connected:
-#         recieved_audio = ws.receive()
-#         print("recieved audio")
-#         print(recieved_audio)
-#         voice_handler.handle_input_stream(recieved_audio)
-    
 
 
 if __name__ == "__main__":
