@@ -45,9 +45,9 @@ class ConversationHandler:
             By default, the last paragraph is returned.
         """
         if role == "initiator":
-            text_list = self._initiator_text[paragraph]
+            text_list = self._initiator_text[paragraph if paragraph != -1 else len(self._initiator_text.keys()) - 1]
         elif role == "receiver":
-            text_list = self._receiver_text[paragraph]
+            text_list = self._receiver_text[paragraph if paragraph != -1 else len(self._receiver_text.keys()) - 1]
         else:
             raise ValueError("Invalid role")
 
