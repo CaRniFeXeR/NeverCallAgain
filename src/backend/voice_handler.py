@@ -10,7 +10,7 @@ class VoiceHandler:
     VoiceHandler is a class that handles all voice related operations.
     """
 
-    def __init__(self, chunk_size=1024) -> None:
+    def __init__(self, chunk_size=1000) -> None:
         self.stt = SpeechToText()
         self.chunk_size = chunk_size
 

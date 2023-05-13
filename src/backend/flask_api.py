@@ -11,9 +11,6 @@ from chunk_handler import ChunkHandler
 from conversation_handler import ConversationHandler
 from chatgpt import ChatGPT
 from flask import Flask, Response, jsonify, request, send_from_directory
-# from flask_socketio import SocketIO
-# from flask_sockets import Sockets
-from flask_sock import Sock
 from TtS import TextToSpeech
 from voice_handler import VoiceHandler
 from wav_handler import get_empty_wave_bytes, get_wave_header, split_wave_bytes_into_chunks
@@ -66,14 +63,6 @@ def generate_audio():
 def stream_audio():
     return Response(generate_audio(), mimetype="audio/x-wav")
 
-
-@app.route("/record_audio", methods=["POST"])
-def record_audio():
-    audio_data = request.data
-    sd.play(audio_data, 44100)
-    return "OK"
-
-
 @app.route("/submit", methods=["POST"])
 def submit():
     data = request.json
@@ -112,8 +101,6 @@ def start_call():
     return jsonify(response)
 
 
-
-
 @app.route("/static/<path:filename>")
 def return_client_files(filename: str):
     return send_from_directory("./../frontend", filename)
@@ -139,10 +126,12 @@ def recieve_audio():
     # voice_handler.handle_input_byte_string(data)
 
     # chunk_handler.handle_input_byte_string(data)
+    print("chunk size", data_np.shape)
     data_processed, can_speak = chunk_handler.process_chunk(data_np)
 
     if chunk_handler.state_machine.state == "waiting_in_queue":
         print("waiting in queue")
+        chunk_handler.transition_to_wait() #TODO maybe remove in future
     elif chunk_handler.state_machine.state == "start_opener_speaking":
         
         #moved to /start_call for now ..
@@ -164,48 +153,27 @@ def recieve_audio():
         
     elif chunk_handler.state_machine.state == "speaking":
         print("still speaking")
-        n_chunks = data_np.shape[0] // 1024
-        write_to_queue(get_empty_wave_bytes(header=False,n_chunks=n_chunks))
+        n_chunks = data_np.shape[0] // 1000
+        write_to_queue(get_empty_wave_bytes(header=False, chunk_size=1000, n_chunks=n_chunks))
 
 
     elif chunk_handler.state_machine.state == "waiting":
         #listen to input
         print("waiting")
-        transcript = voice_handler.handle_input_byte_string(data)
-        conv_handler.append_receiver_text(transcript)
-        n_chunks = data_np.shape[0] // 1024
-        write_to_queue(get_empty_wave_bytes(header=False,n_chunks=n_chunks))
-
+        transcript = voice_handler.handle_input_byte_string(data_with_head)
+        if transcript is not None:
+            conv_handler.append_receiver_text(transcript)
+            print(transcript)
+            n_chunks = data_np.shape[0] // 1000
+            write_to_queue(get_empty_wave_bytes(header=False,n_chunks=n_chunks))
 
     
     # if chunk_handler.state_machine.state == "":
 
-    # with open("output.wav","wb") as f:
-    #     f.write(data)
-
-    response = jsonify("File received and saved!")
+    response = jsonify("Alright alright alright!")
     response.headers.add('Access-Control-Allow-Origin', '*')
 
     return response
-
-@app.route("/recieve_audio_old", methods=["POST"])
-def recieve_audio_old():
-    """Displays the index page accessible at '/'"""
-    files = request.files
-    file = files.get('file')
-    content = file.read()
-
-
-    with open('test.webm', 'wb') as f:
-        f.write(content)
-
-    voice_handler.handle_input_byte_string(content)
-
-    response = jsonify("File received and saved!")
-    response.headers.add('Access-Control-Allow-Origin', '*')
-
-    return response
-
 
 if __name__ == "__main__":
     app.run(host=os.environ.get("FLASK_HOST_IP", "localhost"))
