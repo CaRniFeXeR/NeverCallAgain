@@ -21,7 +21,6 @@
       />
     </div>
     <CardDiv :calls="calls_to_display" style="height: 500px; margin-top: 10px">
-      <p>This is some additional content for the card body.</p>
     </CardDiv>
 
     <AddCardButton
@@ -56,6 +55,7 @@ import CardDiv from "./components/CardDiv.vue";
 import AddCardButton from "./components/AddCardButton.vue";
 import CreateCall from "./components/CreateCall.vue";
 import { Slide } from "vue3-burger-menu";
+import Call from "./models/Call";
 
 // border: 1px solid black;
 
@@ -78,53 +78,20 @@ export default {
 
       //state: 0 = not rdy; 1 = pending; 2 = retrieved
       calls: [
-        {
-          id: "1",
-          title: "call",
-          state: 0,
-        },
-
-        {
-          id: "2",
-          title: "calll",
-          state: 1,
-        },
-
-        {
-          id: "3",
-          title: "callll",
-          state: 2,
-        },
-
-        {
-          id: "4",
-          title: "calllll",
-          state: 0,
-        },
-
-        {
-          id: "5",
-          title: "callllll",
-          state: 0,
-        },
-
-        {
-          id: "6",
-          title: "calllllll",
-          state: 0,
-        },
-
-        {
-          id: "7",
-          title: "CallTitle_7",
-          state: 0,
-        },
-
-        {
-          id: "8",
-          title: "CallTitle_8",
-          state: 0,
-        },
+        new Call(
+          "Test call",
+          2,
+          "Dr. Palkovits",
+          "01234 110101010",
+          "Werner Faymann",
+          [
+            {
+              selectedDate: "03.02.2032",
+              selectedStartTime: "08:00",
+              selectedEndTime: "10:00",
+            },
+          ]
+        ),
       ],
       calls_to_display: Array,
     };
@@ -151,12 +118,14 @@ export default {
 
     displayCreateCallComponent() {
       this.div_display_state = 1;
-      console.log("craete new profile");
+      console.log("create new profile");
     },
 
     createCall(param) {
       console.log("create call with param: ", param);
       this.div_display_state = 0;
+      this.calls.push(param);
+      this.calls_to_display = this.calls;
     },
   },
 };

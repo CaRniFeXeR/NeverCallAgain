@@ -1,6 +1,6 @@
 <template>
-  <h2 style="position: relative; width: 95%; top: 20px">Call Creation</h2>
-  <div class="create-card-div" style="margin-top: 30px">
+  <h2 style="position: absolute; width: 95%; top: 20px">Call Creation</h2>
+  <div class="create-card-div" style="margin-top: 90px">
     <div class="form-group">
       <label for="call-title" class="label-for-input" style="font-size: 19px"
         >Call title</label
@@ -60,18 +60,20 @@
 
     <DateTimePicker ref="Datetimepicker"></DateTimePicker>
     <DateTimePicker
+      @close="closeDateTimeOption"
       v-if="this.datetimeCount >= 2"
       isAdditionalDateTime="true"
       ref="Datetimepicker_2"
     ></DateTimePicker>
     <DateTimePicker
+      @close="closeDateTimeOption"
       v-if="this.datetimeCount >= 3"
       isAdditionalDateTime="true"
       ref="Datetimepicker_3"
     ></DateTimePicker>
 
     <button
-      class="create-btn"
+      class="btn adddatetime-btn"
       @click="incrementdatetimeCount"
       ref="incrementdatetimeCount"
       :disabled="this.datetimeCount >= 3"
@@ -80,7 +82,7 @@
     </button>
 
     <button
-      class="create-btn"
+      class="btn create-btn"
       @click="emitCreateCall"
       ref="createCallBtn"
       :disabled="!allFieldsFilled"
@@ -93,6 +95,7 @@
 <script>
 import SearchableDropdown from "./DropDownSearchable.vue";
 import DateTimePicker from "./DateAndTimePicker.vue";
+import Call from "../models/Call.js";
 
 export default {
   name: "CreateCall",
@@ -127,8 +130,30 @@ export default {
 
   methods: {
     emitCreateCall() {
-      console.log(this.$refs.Datetimepicker.getData());
-      this.$emit("create-call");
+      let dateTimes = [];
+
+      if (this.datetimeCount == 1) {
+        dateTimes.push(this.$refs.Datetimepicker.getData());
+      }
+
+      if (this.datetimeCount >= 2) {
+        dateTimes.push(this.$refs.Datetimepicker_2.getData());
+      }
+
+      if (this.datetimeCount >= 3) {
+        dateTimes.push(this.$refs.Datetimepicker_3.getData());
+      }
+
+      let call = new Call(
+        this.call_title,
+        0,
+        this.receiver_name,
+        this.receiver_telnr,
+        this.initiator_name,
+        dateTimes
+      );
+
+      this.$emit("create-call", call);
     },
     checkInputs() {
       if (this.allFieldsFilled) {
@@ -143,6 +168,10 @@ export default {
     },
     incrementdatetimeCount() {
       this.datetimeCount++;
+    },
+    closeDateTimeOption() {
+      console.log("close one datetime picker");
+      this.datetimeCount--;
     },
   },
 };
@@ -193,11 +222,14 @@ export default {
     text-align: center;
   }
 
-  .create-btn {
+  .btn {
     width: 100%;
     border-style: 1px solid lightgrey;
     font-weight: bold;
     font-size: 22px;
+    height: 40px;
+    margin-top: 10px;
+    border-radius: 10px;
   }
 }
 </style>

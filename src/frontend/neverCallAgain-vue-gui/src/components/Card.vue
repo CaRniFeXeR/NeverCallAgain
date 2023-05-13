@@ -1,44 +1,46 @@
 <template>
-  <div class="card">
+  <div v-if="call" class="card">
     <div :class="headerClass">
-      {{ title }}
+      {{ call.title }}
     </div>
     <div class="card-body">
-      <slot></slot>
+      <p class="card-body-text"><b>From:</b> {{ call.initiatorName }}</p>
+      <p class="card-body-text"><b>To:</b> {{ call.receiverName }}</p>
     </div>
   </div>
 </template>
 
-
 <script>
+import Call from "../models/Call";
+
 export default {
   name: "CallCard",
   props: {
+    call: {
+      type: Call,
+      required: true,
+    },
     title: {
       type: String,
-      required: true
+      required: true,
     },
     state: {
       type: Number,
-      default: 0
-    }
+      default: 0,
+    },
   },
   computed: {
     headerClass() {
-      switch(this.state) {
+      switch (this.state) {
         case 1:
-          //somehow this didnt work
-          return 'card-header card-header-blue';
-          //return 'card-header-blue';
+          return "card-header card-header-blue";
         case 2:
-          return 'card-header card-header-green';
-          //return 'card-header-green';
+          return "card-header card-header-green";
         default:
-          return 'card-header card-header-grey';
-
+          return "card-header card-header-grey";
       }
-    }
-  }
+    },
+  },
 };
 </script>
 <style>
@@ -51,7 +53,7 @@ export default {
   height: 200px;
   width: 45%;
   margin-left: 7px;
-  margin-bottom: 5px;;
+  margin-bottom: 5px;
 }
 
 .card-header {
@@ -82,4 +84,10 @@ export default {
   padding: 10px;
   overflow-y: auto;
 }
-</style> 
+
+.card-body-text {
+  margin-top: 5px;
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  text-align: left;
+}
+</style>

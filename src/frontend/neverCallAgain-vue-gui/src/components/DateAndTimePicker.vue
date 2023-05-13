@@ -11,9 +11,23 @@
   >
     <div
       v-if="isAdditionalDateTime"
-      style="position: absolute; top: 0; right: 0"
+      style="position: absolute; top: 0; right: 10px"
     >
-      <button @click="$emit('close')">x</button>
+      <button
+        style="
+          background: none;
+          border: none;
+          padding: 0;
+          margin: 0;
+          font-size: 20px;
+          color: black;
+          width: 30px;
+          height: 30px;
+        "
+        @click="$emit('close')"
+      >
+        X
+      </button>
     </div>
     <div class="form-group">
       <label for="datepicker" class="label-for-input">Date:</label>
@@ -36,8 +50,6 @@
         </option>
       </select>
     </div>
-
-    ruby
 
     <div class="form-group">
       <label for="endtimepicker" class="label-for-input">To:</label>
@@ -66,8 +78,8 @@ export default {
   data() {
     return {
       selectedDate: "",
-      selectedStartTime: "",
-      selectedEndTime: "",
+      selectedStartTime: "08:00",
+      selectedEndTime: "12:00",
       startTimeOptions: [
         "07:00",
         "08:00",

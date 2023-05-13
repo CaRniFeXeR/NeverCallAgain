@@ -1,29 +1,32 @@
 <template>
   <div class="card-div" style="overflow-y: auto">
-    <CallCard v-for="item in calls" :key="item.id" :title="item.title" :state="item.state">
+    <CallCard
+      v-for="item in calls"
+      :key="item.id"
+      :call="item"
+      :title="item.title"
+      :state="item.state"
+    >
       <slot></slot>
     </CallCard>
   </div>
 </template>
 
-
 <script>
-
-import CallCard from './Card.vue';
+import CallCard from "./Card.vue";
 
 export default {
   name: "CardDiv",
   props: {
     calls: {
       type: Array,
-      required: true
-    }
+      required: true,
+    },
   },
-  components:{
-    CallCard
-  }
+  components: {
+    CallCard,
+  },
 };
-
 </script>
 
 <style scoped>
@@ -35,7 +38,4 @@ export default {
   border: 3px solid lightgrey;
   border-radius: 5px;
 }
-
-
-
 </style>
