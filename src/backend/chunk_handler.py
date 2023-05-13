@@ -11,6 +11,7 @@ class _StateMachine:
     Possible states:
     - call_pending
     - [waiting_in_queue]  # waiting_in_queue requirs a different strategy than waiting
+    - start_opener_speaking
     - start_speaking
     - speaking
     - [waiting]
@@ -19,8 +20,9 @@ class _StateMachine:
     """
     VALID_STATES = ["call_pending",
                     "waiting_in_queue",
-                    "start_speaking",
+                    "start_opener_speaking",
                     "speaking",
+                    "start_speaking",
                     "waiting",
                     "call_ended",
                     "call_interrupted"]
@@ -97,7 +99,10 @@ class ChunkHandler:
     def _can_speak(self):
         can_speak = self.state_machine.inc_counter()
         if can_speak:
-            self.state_machine.state = "start_speaking"
+            if self.state_machine.state == "waiting_in_queue":
+                self.state_machine.state = "start_opener_speaking"
+            else:
+                self.state_machine.state = "start_speaking"
             self.state_machine.reset_counter()
         else:
             self.state_machine.reset_counter()
@@ -122,7 +127,7 @@ class ChunkHandler:
         elif self.state_machine.state == "speaking":
             # todo process chunks
             can_speak = True
-        elif self.state_machine.state == "start_speaking":
+        elif self.state_machine.state in ["start_speaking", "start_opener_speaking"]:
             can_speak = True
             self.state_machine.state = "speaking"
         elif self.state_machine.state == "waiting":
