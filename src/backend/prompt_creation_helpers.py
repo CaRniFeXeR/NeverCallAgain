@@ -169,3 +169,27 @@ def uhrzeit_text(time_str):
         final_text = hour_text + " Uhr " + minute_text
 
     return final_text
+
+
+def date_to_string(date_str):
+    # Mapping von Monatsnummern zu Monatsnamen
+    months = {
+        "01": "Januar",
+        "02": "Februar",
+        "03": "März",
+        "04": "April",
+        "05": "Mai",
+        "06": "Juni",
+        "07": "Juli",
+        "08": "August",
+        "09": "September",
+        "10": "Oktober",
+        "11": "November",
+        "12": "Dezember",
+    }
+
+    _, month, day = date_str.split("-")
+
+    month_str = months[month]
+
+    return f"{day}.{month_str}"
