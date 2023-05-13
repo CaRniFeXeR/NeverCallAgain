@@ -1,12 +1,9 @@
-import io
 import os
 import queue
 import time
-from pathlib import Path
 
 import flask
 import numpy as np
-import sounddevice as sd
 from chunk_handler import ChunkHandler
 from conversation_handler import ConversationHandler
 from chatgpt import ChatGPT
@@ -15,17 +12,12 @@ from TtS import TextToSpeech
 from voice_handler import VoiceHandler
 from wav_handler import get_empty_wave_bytes, get_wave_header, split_wave_bytes_into_chunks
 
-# from src.backend.chatgpt import ChatGPT
-# from src.backend.TtS import TextToSpeech
 
 app = Flask(__name__, static_folder="./../frontend")
-# app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 30}
-# sockets = Sock(app)
 
-# Create a byte stream
-# output_stream = io.BytesIO()
 data_queue = queue.Queue()
 app.writing_data = False
+generate_debug_file = False
 
 tts = TextToSpeech() 
 voice_handler = VoiceHandler()
@@ -45,8 +37,7 @@ def write_to_queue(bytes):
 
 def generate_audio():
     print("generate_audio")
-    stream_count = 0
-    # time.sleep(1)
+    # stream_count = 0
     if not app.writing_data and data_queue.empty():
         time.sleep(1)  # lol hack
     while app.writing_data or not data_queue.empty():
@@ -70,7 +61,6 @@ def stream_audio():
 def submit():
     data = request.json
     text_input = data["text_input"]
-    # output_stream.write(get_wave_header())
     app.writing_data = True
     data_queue.put(get_wave_header())
     for delta in chatgpt.get_response_by_delimiter(text_input):
@@ -80,7 +70,6 @@ def submit():
 
         write_to_queue(bytes)
     # print(result)
-    # output_stream.close()bytes
     app.writing_data = False
     print("app writing data set to false")
 
@@ -167,14 +156,15 @@ def recieve_audio():
 
 
     elif chunk_handler.state_machine.state == "listening":
-        # if app.while_speaking_data != None:
-        #     app.while_speaking_data + data
-        #     app.count_to_write += 1
-        #     if app.count_to_write == 5:
-        #         with open("test.wav", "wb") as f:
-        #             f.write(app.while_speaking_data)
-        #             print("wrote example")
-        #     app.while_speaking_data = None
+        if generate_debug_file and  app.while_speaking_data != None:
+            app.while_speaking_data = app.while_speaking_data + data
+            app.count_to_write += 1
+            if app.count_to_write >= 2:
+                with open("listening_test.wav", "wb") as f:
+                    f.write(app.while_speaking_data)
+                    print("wrote example")
+                    app.count_to_write = 0
+                app.while_speaking_data = None
         #listen to input
         # print("waiting")
         transcript = voice_handler.handle_input_byte_string(data_with_head)
