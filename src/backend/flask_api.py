@@ -9,6 +9,7 @@ from conversation_handler import ConversationHandler
 from chatgpt import ChatGPT
 from flask import Flask, Response, jsonify, request, send_from_directory
 from TtS import TextToSpeech
+from src.backend.logging_util import def_logger, prepare_log_file
 from voice_handler import VoiceHandler
 from wav_handler import get_empty_wave_bytes, get_wave_header, split_wave_bytes_into_chunks
 
@@ -19,7 +20,7 @@ data_queue = queue.Queue()
 app.writing_data = False
 generate_debug_file = False
 
-tts = TextToSpeech() 
+tts = TextToSpeech()
 voice_handler = VoiceHandler()
 chunk_handler = ChunkHandler()
 chatgpt = ChatGPT()
@@ -27,6 +28,8 @@ conv_handler = ConversationHandler()
 
 app.while_speaking_data = get_wave_header(sample_rate=16000)
 app.count_to_write = 0
+
+logger = def_logger.getChild(__name__)
 
 
 def write_to_queue(bytes):
@@ -57,6 +60,7 @@ def generate_audio():
 def stream_audio():
     return Response(generate_audio(), mimetype="audio/x-wav")
 
+
 @app.route("/submit", methods=["POST"])
 def submit():
     data = request.json
@@ -75,6 +79,7 @@ def submit():
 
     response = {"message": "Data received successfully"}
     return jsonify(response)
+
 
 @app.route("/start_call", methods=["POST"])
 def start_call():
@@ -120,33 +125,32 @@ def recieve_audio():
     data_processed, can_speak = chunk_handler.process_chunk(data_np)
     print("state: " + chunk_handler.state_machine.state)
 
-
     if chunk_handler.state_machine.state == "waiting_in_queue":
         pass
         # print("waiting in queue")
         # chunk_handler.transition_to_wait() #TODO maybe remove in future
     elif chunk_handler.state_machine.state == "start_opener_speaking":
-        
-        #moved to /start_call for now ..
+
+        # moved to /start_call for now ..
         # chunk_handler.transition_to_wait()
         print("from start_opener_speaking to wait")
     elif chunk_handler.state_machine.state == "start_speaking":
-         
+
         last_answer = conv_handler.get_paragraph(role="receiver")
 
         print("**** last_answer " + last_answer)
 
-        gpt_answer =" "
+        gpt_answer = " "
         for delta in chatgpt.get_response_by_delimiter(last_answer):
             audio_segment = tts.text_to_speech_numpy_pmc(delta)
             gpt_answer += " " + delta
             bytes = audio_segment.tobytes()
             write_to_queue(bytes)
-        
+
         # chunk_handler.transition_to_wait()
         conv_handler.append_initiator_text(gpt_answer)
         print("******** gptanswer *****  " + gpt_answer)
-        
+
     elif chunk_handler.state_machine.state == "speaking":
         pass
         # n_chunks = data_np.shape[0] // 1000
@@ -173,13 +177,12 @@ def recieve_audio():
         else:
             conv_handler.append_receiver_text(transcript)
 
-            print("****\n****transcripted:        " +  transcript)
+            print("****\n****transcripted:        " + transcript)
             # print(transcript)
-        #while listening, send empty bytes
+        # while listening, send empty bytes
         n_chunks = data_np.shape[0] // 1000
-        write_to_queue(get_empty_wave_bytes(header=False,n_chunks=n_chunks))
+        write_to_queue(get_empty_wave_bytes(header=False, n_chunks=n_chunks))
 
-    
     # if chunk_handler.state_machine.state == "":
 
     response = jsonify("Alright alright alright!")
@@ -187,5 +190,7 @@ def recieve_audio():
 
     return response
 
+
 if __name__ == "__main__":
+    prepare_log_file(log_file_path=os.environ.get("LOG_FILE_PATH", "./log_backend.log"), overwrite=True)
     app.run(host=os.environ.get("FLASK_HOST_IP", "localhost"))

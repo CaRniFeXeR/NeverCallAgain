@@ -1,4 +1,9 @@
+import logging
 from typing import Dict, List, Tuple
+
+from src.backend.logging_util import def_logger
+
+logger = def_logger.getChild(__name__)
 
 
 class ConversationHandler:
@@ -38,7 +43,7 @@ class ConversationHandler:
         self._receiver_text = dict()
         self._stepper = 0
 
-    def get_paragraph(self, role: str = "receiver", paragraph: int = -1, paragraph_sep: str = "\n"):
+    def get_paragraph(self, role: str = "receiver", paragraph: int = -1, paragraph_sep: str = " "):
         """
             Returns the paragraph of the conversation.
 
@@ -51,9 +56,11 @@ class ConversationHandler:
         else:
             raise ValueError("Invalid role")
 
-        return paragraph_sep.join(text_list)
+        paragraph_text = paragraph_sep.join(text_list)
+        logger.debug(f"Returning paragraph: {paragraph_text}")
+        return paragraph_sep.join(paragraph_text)
 
-    def build_conversation(self, role_prefixes: Tuple[str, str] = ("A: ", "B: "), paragraph_sep: str = "\n") -> str:
+    def build_conversation(self, role_prefixes: Tuple[str, str] = ("A: ", "B: "), paragraph_sep: str = " ") -> str:
         def _build_graphraph(paragraph_list: List[str], role_prefix: str) -> str:
             return role_prefix + paragraph_sep.join(paragraph_list) + "\n"
 

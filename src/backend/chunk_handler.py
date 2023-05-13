@@ -119,8 +119,8 @@ class ChunkHandler:
         self.wait_threshold = chunk_config.get("wait_threshold", 0.05)
         self.is_mono = chunk_config.get("is_mono", True)
         pv_access_key = os.environ.get("PICOVOICE_API_KEY")
-        assert pv_access_key, "PICOVOICE_API_KEY environment variable not set"
-        self.cobra = pvcobra.create(access_key=pv_access_key)
+        # assert pv_access_key, "PICOVOICE_API_KEY environment variable not set"
+        # self.cobra = pvcobra.create(access_key=pv_access_key)
         self.chunk_length = chunk_config.get("chunk_length", 4000)
 
     @staticmethod
