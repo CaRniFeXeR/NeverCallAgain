@@ -83,14 +83,23 @@
 
     <button
       class="btn create-btn"
-      @click="emitCreateCall"
-      ref="createCallBtn"
+      @click="emitCreateCall(1)"
+      ref="scheduleAppointmentBtn"
       :disabled="!allFieldsFilled"
     >
-      Create Call
+      Schedule Appointment
+    </button>
+
+    <button
+      class="btn create-btn"
+      @click="emitCreateCall(0)"
+      :disabled="!this.call_title"
+    >
+      Save & Exit
     </button>
   </div>
-  <!-- <SearchableDropdown :options="this.options" @selected="onOptionSelected"></SearchableDropdown> -->
+  <!-- <SearchableDropdown :options="this.options" @selected="onOptionSele
+  cted"></SearchableDropdown> -->
 </template>
 <script>
 import SearchableDropdown from "./DropDownSearchable.vue";
@@ -129,7 +138,7 @@ export default {
   },
 
   methods: {
-    emitCreateCall() {
+    emitCreateCall(state_of_call) {
       let dateTimes = [];
 
       if (this.datetimeCount == 1) {
@@ -146,7 +155,7 @@ export default {
 
       let call = new Call(
         this.call_title,
-        0,
+        state_of_call,
         this.receiver_name,
         this.receiver_telnr,
         this.initiator_name,
@@ -157,9 +166,9 @@ export default {
     },
     checkInputs() {
       if (this.allFieldsFilled) {
-        this.$refs.createCallBtn.removeAttribute("disabled");
+        this.$refs.scheduleAppointmentBtn.removeAttribute("disabled");
       } else {
-        this.$refs.createCallBtn.setAttribute("disabled", "true");
+        this.$refs.scheduleAppointmentBtn.setAttribute("disabled", "true");
       }
     },
     onOptionSelected(option) {
@@ -170,7 +179,6 @@ export default {
       this.datetimeCount++;
     },
     closeDateTimeOption() {
-      console.log("close one datetime picker");
       this.datetimeCount--;
     },
   },

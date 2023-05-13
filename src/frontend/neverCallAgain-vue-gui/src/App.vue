@@ -37,7 +37,7 @@
   <!-- Slide has to be beneath grid in order to be clickable
   https://github.com/mbj36/vue-burger-menu
   -->
-  <Slide right :closeOnNavigation="true" width="300">
+  <Slide right :closeOnNavigation="true">
     <a id="home" href="#">
       <span>Home</span>
     </a>
@@ -63,7 +63,6 @@ export default {
   name: "App",
   components: {
     Slide,
-    // CardDiv,
     CardDiv,
     AddCardButton,
     CreateCall,
@@ -90,7 +89,8 @@ export default {
               selectedStartTime: "08:00",
               selectedEndTime: "10:00",
             },
-          ]
+          ],
+          "21.05.2023, 14:00"
         ),
       ],
       calls_to_display: Array,
@@ -118,11 +118,11 @@ export default {
 
     displayCreateCallComponent() {
       this.div_display_state = 1;
-      console.log("create new profile");
+      console.log("create new call");
     },
 
     createCall(param) {
-      console.log("create call with param: ", param);
+      console.log("schedule appointment with param: ", param);
       this.div_display_state = 0;
       this.calls.push(param);
       this.calls_to_display = this.calls;

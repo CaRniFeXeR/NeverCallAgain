@@ -5,7 +5,8 @@ export default class Call {
     receiverName,
     receiverPhonenr,
     initiatorName,
-    possibleDatetimes
+    possibleDatetimes,
+    result = null
   ) {
     this.title = title;
     this.state = state;
@@ -13,5 +14,10 @@ export default class Call {
     this.receiverPhonenr = receiverPhonenr;
     this.initiatorName = initiatorName;
     this.possibleDatetimes = possibleDatetimes;
+    this.result = result;
+  }
+
+  setResult(result) {
+    this.result = result;
   }
 }

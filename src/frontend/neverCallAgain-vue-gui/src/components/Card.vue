@@ -6,6 +6,9 @@
     <div class="card-body">
       <p class="card-body-text"><b>From:</b> {{ call.initiatorName }}</p>
       <p class="card-body-text"><b>To:</b> {{ call.receiverName }}</p>
+      <p v-if="call.state == 2">
+        <b>Appointed at: {{ call.result }}</b>
+      </p>
     </div>
   </div>
 </template>
@@ -81,7 +84,7 @@ export default {
 
 .card-body {
   flex-grow: 1;
-  padding: 10px;
+  padding: 3px;
   overflow-y: auto;
 }
 
