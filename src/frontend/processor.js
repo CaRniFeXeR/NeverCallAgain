@@ -7,16 +7,11 @@ class MyWorkletProcessor extends AudioWorkletProcessor {
     }
 
     handleMessage(event) {
-        // const inputBuffer = event.data;
-        // const audioData = inputBuffer.getChannelData(0);
-        // const xhr = new XMLHttpRequest();
-        // xhr.open('POST', '/audio', true);
-        console.log("print")
-        // xhr.send(audioData);
+        console.log("message from main thread recieved")
       }
   
       process(inputs, outputs) {
-        console.log("process audio")
+        // console.log("process audio")
         const data = inputs[0][0]
 
         const inputBuffer = inputs[0][0];
