@@ -18,10 +18,10 @@ def _get_energy(samples) -> float:
 def _detect_silence(audio_chunk, silence_threshold):
     # max_energy = _get_energy([np.max(audio_chunk)])
     avg_energy = _get_energy(audio_chunk)
-    print(avg_energy)
     # print(max_energy)
     # print("ratio: ", avg_energy / max_energy)
     if avg_energy < silence_threshold:
+        print("Silenc detected with energy: ", avg_energy)
         return True
     return False
 
