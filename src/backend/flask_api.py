@@ -88,7 +88,7 @@ def submit():
 def start_call():
     app.writing_data = True
     chunk_handler.start_call()
-    opener_text = "Hallo ich möchte gerne einen Termin für Florian Pfiel ausmachen. Haben Sie nächsten Donnerstag um 9:30 Uhr zeit?"
+    opener_text = "Hallo ich möchte gerne einen Termin für Florian Pfiel ausmachen. Haben Sie nächsten Donnerstag um neun uhr zeit?"
     conv_handler.append_initiator_text(opener_text)
 
     audio_segment = tts.text_to_speech_numpy_pmc(opener_text)
@@ -98,6 +98,7 @@ def start_call():
     write_to_queue(bytes)
 
     response = {"message": "Alright alright alright!"}
+    print("start call success")
     return jsonify(response)
 
 
@@ -139,7 +140,7 @@ def recieve_audio():
         print("from start_opener_speaking to wait")
     elif chunk_handler.state_machine.state == "start_speaking":
          
-        last_answer = conv_handler.get_paragraph(role="reciever")
+        last_answer = conv_handler.get_paragraph(role="receiver")
 
         gpt_answer =""
         for delta in chatgpt.get_response_by_delimiter(last_answer):
@@ -155,6 +156,7 @@ def recieve_audio():
         print("still speaking")
         n_chunks = data_np.shape[0] // 1000
         write_to_queue(get_empty_wave_bytes(header=False, chunk_size=1000, n_chunks=n_chunks))
+        chunk_handler.transition_to_wait()
 
 
     elif chunk_handler.state_machine.state == "waiting":
