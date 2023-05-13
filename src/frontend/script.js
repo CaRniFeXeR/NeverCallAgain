@@ -1,29 +1,28 @@
-const form = document.getElementById('myForm');
-form.addEventListener('submit', function (event) {
+const form = document.getElementById("myForm");
+form.addEventListener("submit", function (event) {
   event.preventDefault(); // prevent the default form submission behavior
 
-  const input = document.getElementById('text_input');
+  const input = document.getElementById("text_input");
   const inputValue = input.value;
 
   const data = { text_input: inputValue };
   const options = {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   };
 
-  fetch('/submit', options)
-    .then(response => response.json())
-    .then(data => console.log(data))
-    .catch(error => console.error(error));
+  fetch("/submit", options)
+    .then((response) => response.json())
+    .then((data) => console.log(data))
+    .catch((error) => console.error(error));
 });
-
 
 // onclick button with id audio_click
 
-const btn = document.getElementById("audio_btn")
+const btn = document.getElementById("audio_btn");
 
 function registerAudioPlayBackStream() {
   var div = document.getElementById("audio_container")
@@ -39,7 +38,7 @@ btn.onclick = function () {
   registerAudioPlayBackStream()
 }
 
-const micro_btn = document.getElementById("micro_btn")
+const micro_btn = document.getElementById("micro_btn");
 
 function handleMicStream(streamObj) {
   // keep the context in a global variable
@@ -49,7 +48,7 @@ function handleMicStream(streamObj) {
 
   input.connect(processor);
 
-  processor.onaudioprocess = e => {
+  processor.onaudioprocess = (e) => {
     microphoneProcess(e); // receives data from microphone
   };
 }
@@ -71,21 +70,21 @@ function registerMircophone() {
       micProcessor.port.onmessage =  ({ data }) => {
         var myData = data.outputData;
 
-        buffer_arry = combinedArray = new Int32Array([...buffer_arry, ...myData]);
-        buffer_count += 1
+        buffer_arry = combinedArray = new Int32Array([
+          ...buffer_arry,
+          ...myData,
+        ]);
+        buffer_count += 1;
 
         if (buffer_count == 500) {
+          fetch("/recieve_audio2", {
+            method: "POST",
+            body: buffer_arry,
+          });
 
-          fetch('/recieve_audio2', {
-            method: 'POST',
-            body: buffer_arry
-          })
-
-          buffer_count = 0
+          buffer_count = 0;
           buffer_arry = new Int32Array();
-
         }
-
       };
       micSource.connect(micProcessor);
       micProcessor.connect(audioContext.destination);

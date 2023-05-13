@@ -165,3 +165,12 @@ ngc-cli
 *.wav
 *.mp3
 Makefile
+
+
+# NodeJS
+.DS_Store
+node_modules
+
+npm-debug.log*
+node_modules/
+jspm_packages/
