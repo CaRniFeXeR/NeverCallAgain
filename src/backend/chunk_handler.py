@@ -118,7 +118,7 @@ class ChunkHandler:
             chunk_config = dict()
         self.state_machine = _StateMachine(
             **chunk_config.get("state_machine_config")) if chunk_config else _StateMachine()
-        self.wait_threshold = chunk_config.get("wait_threshold", 0.05)
+        self.wait_threshold = chunk_config.get("wait_threshold", 0.06)
         self.is_mono = chunk_config.get("is_mono", True)
         pv_access_key = os.environ.get("PICOVOICE_API_KEY")
         # assert pv_access_key, "PICOVOICE_API_KEY environment variable not set"

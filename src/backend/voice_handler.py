@@ -2,7 +2,7 @@ from typing import IO
 
 import numpy as np
 
-from .StT import SpeechToText
+from StT import SpeechToText
 
 
 class VoiceHandler:

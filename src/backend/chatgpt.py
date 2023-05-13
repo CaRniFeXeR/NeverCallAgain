@@ -6,7 +6,6 @@ import openai
 
 # print(openai.Model.list())
 
-
 class ChatGPT:
     def __init__(self) -> None:
         self.messages = []
@@ -49,9 +48,10 @@ class ChatGPT:
                 result_str += " " + delta
                 yield (delta, result_str)
 
-    def get_response_by_delimiter(self, message: str, delimiter=[",", ".", "!"]):
+    def get_response_by_delimiter(self, message: str, with_history : bool = False, delimiter=[",", ".", "!", "?",":"]):
         buffer = ""
-        for delta, result in self.get_response(message):
+        gen = self.get_response_with_history(message) if with_history else self.get_response(message)
+        for delta, result in gen:
             buffer += delta
             if delta in delimiter:
                 yield buffer

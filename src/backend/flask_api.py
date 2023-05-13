@@ -1,7 +1,7 @@
 import os
 import queue
 import time
-
+import prompt_creation_helpers
 import flask
 import numpy as np
 from chunk_handler import ChunkHandler
@@ -16,7 +16,7 @@ from wav_handler import get_empty_wave_bytes, get_wave_header, split_wave_bytes_
 
 app = Flask(__name__, static_folder="./../frontend")
 
-data_queue = queue.Queue()
+app.data_queue = queue.Queue()
 app.writing_data = False
 app.conv_started = False
 app.opener_text = ""
@@ -37,21 +37,21 @@ logger = def_logger.getChild(__name__)
 def write_to_queue(bytes):
     # print("write_to_queue")
     for byte_chunk in split_wave_bytes_into_chunks(bytes):
-        data_queue.put(byte_chunk)
+        app.data_queue.put(byte_chunk)
 
 
 def generate_audio():
     print("generate_audio")
     # stream_count = 0
-    if not app.writing_data and data_queue.empty():
+    if not app.writing_data and app.data_queue.empty():
         time.sleep(1)  # lol hack
-    while app.writing_data or not data_queue.empty():
-        if not data_queue.empty():
-            data = data_queue.get()
+    while app.writing_data or not app.data_queue.empty():
+        if not app.data_queue.empty():
+            data = app.data_queue.get()
             yield data
             # stream_count += 1
             # print(f"streaming audio back {stream_count}")
-        if app.writing_data and data_queue.empty():
+        if app.writing_data and app.data_queue.empty():
             time.sleep(3)  # lol hack
             print("wating for new data to stream")
 
@@ -68,7 +68,7 @@ def submit():
     data = request.json
     text_input = data["text_input"]
     app.writing_data = True
-    data_queue.put(get_wave_header())
+    app.data_queue.put(get_wave_header())
     for delta in chatgpt.get_response_by_delimiter(text_input):
         audio_segment = tts.text_to_speech_numpy_pmc(delta)
         print(delta)
@@ -88,13 +88,35 @@ def start_call():
     app.writing_data = True
     app.conv_started = False
     chunk_handler.start_call()
-    opener_text = "Hallo ich möchte gerne einen Termin für Florian Pfiel ausmachen. Haben Sie nächsten Donnerstag um neun uhr zeit?"
-    conv_handler.append_initiator_text(opener_text)
+    # data = request.json
+    data = {'title': 'asdadasd', 'state': 1, 'receiverName': 'Deim', 'receiverPhonenr': 'dfdf', 'initiatorName': 'Hoffmann', 'possibleDatetimes': [{'selectedDate': '2023-05-20', 'selectedStartTime': '08:00', 'selectedEndTime': '12:00'}], 'result': None}
+    date_app_req = prompt_creation_helpers.date_to_string(
+        data["possibleDatetimes"][0]["selectedDate"]
+    )
+    start_time = data["possibleDatetimes"][0]["selectedStartTime"]
+    end_time = data["possibleDatetimes"][0]["selectedEndTime"]
 
-    audio_segment = tts.text_to_speech_numpy_pmc(opener_text)
+    date_text = prompt_creation_helpers.datum_text(
+        data["possibleDatetimes"][0]["selectedDate"]
+    )
+
+    time_text = prompt_creation_helpers.uhrzeit_text(
+        data["possibleDatetimes"][0]["selectedStartTime"]
+    )
+
+    receiver = data["receiverName"]
+    initiator = data["initiatorName"]
+
+    opener = f"Hallo, ich möchte gerne bei Doktor { receiver } einen Termin für {initiator} ausmachen. Haben Sie am {date_text} um {time_text} zeit?"
+    app.opener_text = f"Act as participant in a conversation in german language. Your Role setting is: you want to make an appointment at doctor meier, the for you possible time-frame is on the {date_app_req} from {start_time} to {end_time}. Accept all appointment offers in between this frame without any further questions. Decline every offer which is not inside the given time-frame. Continue the following conversation by only one response:"
+    app.opener_text = app.opener_text + " " + opener
+    print(app.opener_text)
+    conv_handler.append_initiator_text(opener)
+
+    audio_segment = tts.text_to_speech_numpy_pmc(opener)
     # print(delta)
     bytes = audio_segment.tobytes()
-    data_queue.put(get_wave_header())
+    app.data_queue.put(get_wave_header())
     write_to_queue(bytes)
 
     response = {"message": "Alright alright alright!"}
@@ -201,4 +223,4 @@ def recieve_audio():
 
 if __name__ == "__main__":
     prepare_log_file(log_file_path=os.environ.get("LOG_FILE_PATH", "./log_backend.log"), overwrite=True)
-    app.run(host=os.environ.get("FLASK_HOST_IP", "localhost"))
+    app.run(host="172.30.234.161") #os.environ.get("FLASK_HOST_IP", "172.30.234.161"))

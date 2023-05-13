@@ -28,7 +28,7 @@ class TextToSpeech:
             audio = self.vocoder.convert_spectrogram_to_audio(spec=spectrogram)
         return audio
 
-    def text_to_speech_numpy_pmc(self, text: str, pace=0.8) -> np.ndarray:
+    def text_to_speech_numpy_pmc(self, text: str, pace=0.9) -> np.ndarray:
         audio_segment = self.text_to_speech(text, pace)
         audio_segment = torch.clamp(audio_segment, -1.0, 0.9999999)
         pcm_data = (audio_segment * 2147483647).to(torch.int32)

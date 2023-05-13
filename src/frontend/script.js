@@ -128,3 +128,24 @@ call_btn.addEventListener("click", async () => {
     })
     .catch(error => console.error(error));
 });
+
+const close_btn = document.getElementById("close_btn");
+close_btn.addEventListener("click", async () => {
+
+  const data = { text_input: "dummyInput just for now TODO: change this pls" };
+  const options = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  };
+
+  fetch('/start_call', options)
+    .then(response => {
+      console.log("call started")
+      registerMircophone()
+      registerAudioPlayBackStream()
+    })
+    .catch(error => console.error(error));
+});
