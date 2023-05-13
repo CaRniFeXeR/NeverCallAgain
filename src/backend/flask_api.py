@@ -38,12 +38,14 @@ conv_handler = ConversationHandler()
 
 
 def write_to_queue(bytes):
+    print("write_to_queue")
     for byte_chunk in split_wave_bytes_into_chunks(bytes):
         data_queue.put(byte_chunk)
 
 
 def generate_audio():
     print("generate_audio")
+    stream_count = 0
     # time.sleep(1)
     if not app.writing_data and data_queue.empty():
         time.sleep(1)  # lol hack
@@ -51,6 +53,8 @@ def generate_audio():
         if not data_queue.empty():
             data = data_queue.get()
             yield data
+            stream_count += 1
+            print(f"streaming audio back {stream_count}")
         if app.writing_data and data_queue.empty():
             time.sleep(3)  # lol hack
             print("wating for new data to stream")
@@ -86,13 +90,14 @@ def submit():
     # print(result)
     # output_stream.close()bytes
     app.writing_data = False
+    print("app writing data set to false")
 
     response = {"message": "Data received successfully"}
     return jsonify(response)
 
 @app.route("/start_call", methods=["POST"])
 def start_call():
-    app.write_data = True
+    app.writing_data = True
     chunk_handler.start_call()
     opener_text = "Hallo ich möchte gerne einen Termin für Florian Pfiel ausmachen. Haben Sie nächsten Donnerstag um 9:30 Uhr zeit?"
     conv_handler.append_initiator_text(opener_text)
@@ -100,7 +105,7 @@ def start_call():
     audio_segment = tts.text_to_speech_numpy_pmc(opener_text)
     # print(delta)
     bytes = audio_segment.tobytes()
-
+    data_queue.put(get_wave_header())
     write_to_queue(bytes)
 
     response = {"message": "Alright alright alright!"}
@@ -129,7 +134,7 @@ def recieve_audio():
     data = request.data
 
     data_with_head = get_wave_header(sample_rate=16000) + data
-    data_np = np.array(data, dtype=np.int32)
+    data_np = np.frombuffer(data, dtype=np.int32)
 
     # voice_handler.handle_input_byte_string(data)
 
