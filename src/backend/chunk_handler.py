@@ -1,8 +1,19 @@
 import os
+import time
 from typing import Any, Mapping, Tuple
 import pvcobra as pvcobra
 
 import numpy as np
+
+
+def _get_energy(samples) -> float:
+    return np.sum(np.power(samples, 2)) / float(len(samples))
+
+
+def _detect_silence(energy, silence_threshold):
+    if energy <= silence_threshold:
+        return True
+    return False
 
 
 class _StateMachine:
@@ -27,7 +38,7 @@ class _StateMachine:
                     "call_ended",
                     "call_interrupted"]
 
-    def __init__(self, max_counter_silence: int = 5) -> None:
+    def __init__(self, max_counter_silence: int = 3) -> None:
         self.state = "call_pending"
         # "waiting" as a toggle, we check each "speech chunk" if the opposite is speaking
         #  if we are in "waiting", we transition to "speaking", once the counter reaches max_counter_silence
@@ -60,7 +71,7 @@ class _StateMachine:
             return False
 
     def reset_counter(self) -> None:
-        self.silence_counter = 0
+        self._silence_counter = 0
 
     def check_opposite_speaking(self) -> bool:
         pass
@@ -76,18 +87,30 @@ class _StateMachine:
 
 class ChunkHandler:
     def __init__(self, chunk_config: Mapping[str, Any] = None):
+        if chunk_config is None:
+            chunk_config = dict()
         self.state_machine = _StateMachine(
             **chunk_config.get("state_machine_config")) if chunk_config else _StateMachine()
-        self.wait_threshold = chunk_config.get("wait_threshold") if chunk_config else 0.2
+        self.wait_threshold = chunk_config.get("wait_threshold", 0.1)
+        self.is_mono = chunk_config.get("is_mono", True)
         pv_access_key = os.environ.get("PICOVOICE_API_KEY")
         assert pv_access_key, "PICOVOICE_API_KEY environment variable not set"
         self.cobra = pvcobra.create(access_key=pv_access_key)
+        self.chunk_length = chunk_config.get("chunk_length", 4096)
+
+    @staticmethod
+    def is_silent_chunk(
+            audio_chunk: np.ndarray,
+            is_mono: bool = True,
+            silence_threshold: float = 0.1,
+    ) -> bool:
+        if not is_mono:
+            audio_chunk = np.sum(audio_chunk, axis=1) / 2
+        energy = _get_energy(audio_chunk)
+        return _detect_silence(energy, silence_threshold)
 
     def check_waiting(self, chunk: np.ndarray) -> bool:
-        # todo: What object does cobra even expect
-        if self.cobra.process(chunk) > self.wait_threshold:
-            return True
-        return False
+        return self.is_silent_chunk(chunk, is_mono=self.is_mono, silence_threshold=self.wait_threshold)
 
     def check_speaking(self, chunk: np.ndarray) -> bool:
         return not self.check_waiting(chunk)
@@ -104,8 +127,8 @@ class ChunkHandler:
             else:
                 self.state_machine.state = "start_speaking"
             self.state_machine.reset_counter()
-        else:
-            self.state_machine.reset_counter()
+        # else:
+        #     self.state_machine.reset_counter()
         return can_speak
 
     def start_call(self):
