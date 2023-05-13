@@ -75,6 +75,7 @@ class ChunkHandler:
         self.cobra = pvcobra.create(access_key=pv_access_key)
 
     def check_waiting(self, chunk: np.ndarray) -> bool:
+        # todo: What object does cobra even expect
         if self.cobra.process(chunk) > self.wait_threshold:
             return True
         return False
@@ -94,6 +95,12 @@ class ChunkHandler:
         else:
             self.state_machine.reset_counter()
         return can_speak
+
+    def start_call(self):
+        self.state_machine.state = "waiting_in_queue"
+
+    def transition_to_wait(self):
+        self.state_machine.state = "waiting"
 
     # todo: chunk implictly assumed to be from caller or receive, depending on state?
     #  should we support the case when caller and receiver talk simultanously?
@@ -115,4 +122,3 @@ class ChunkHandler:
                 can_speak = self._can_speak()
         # todo: ending call
         return chunk, can_speak
-
