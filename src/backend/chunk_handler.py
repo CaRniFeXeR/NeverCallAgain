@@ -6,6 +6,8 @@ import pvcobra as pvcobra
 import numpy as np
 
 
+# reminder flo credentials
+
 def _get_energy(samples) -> float:
     return np.sum(np.power(samples, 2)) / float(len(samples))
 
@@ -56,6 +58,8 @@ class _StateMachine:
     @state.setter
     def state(self, new_state) -> None:
         assert new_state in self.VALID_STATES, f"Invalid state {new_state}"
+        curr_state = self._state if hasattr(self, "_state") else "Init state"
+        print("Transitioning from state {} to state {}".format(curr_state, new_state))
         self._state = new_state
 
     @property
@@ -164,7 +168,7 @@ class ChunkHandler:
 
     def start_call(self):
         #TODO queue waiting skipped for now ..
-        self.state_machine.state = "start_opener_speaking" 
+        self.state_machine.state = "start_opener_speaking"
 
     def transition_to_wait(self):
         self.state_machine.state = "waiting"
