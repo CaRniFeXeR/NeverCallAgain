@@ -74,19 +74,12 @@ class _StateMachine:
     def speaker_counter(self, new_counter=0):
         self._speaker_counter = new_counter
 
-    def inc_receiver_silence_counter(self) -> bool:
+    def inc_receiver_silence_counter(self) -> None:
+        print("Incrementing silence counter")
         self.silence_counter += 1
-        if self._silence_counter >= self.max_silence_counter:
-            return True
-        else:
-            return False
 
-    def inc_receiver_speaking_counter(self) -> bool:
+    def inc_receiver_speaking_counter(self) -> None:
         self.speaker_counter += 1
-        if self._speaker_counter >= self.max_speaker_counter:
-            return True
-        else:
-            return False
 
     def reset_receiver_silence_counter(self) -> None:
         self._silence_counter = 0
@@ -131,7 +124,9 @@ class ChunkHandler:
             Checks whether the receiver is silent and updates the state machine accordingly
         """
         receiver_silent = self.is_silent_chunk(chunk, is_mono=self.is_mono, silence_threshold=self.wait_threshold)
-        if not receiver_silent:
+        if receiver_silent:
+            self.state_machine.inc_receiver_silence_counter()
+        else:
             self.state_machine.reset_receiver_silence_counter()
         return receiver_silent
 
@@ -140,7 +135,9 @@ class ChunkHandler:
             Checks whether the receiver is speaking and updates the state machine accordingly
         """
         receiver_speaking = not self.is_silent_chunk(chunk, is_mono=self.is_mono, silence_threshold=self.wait_threshold)
-        if not receiver_speaking:
+        if receiver_speaking:
+            self.state_machine.inc_receiver_speaking_counter()
+        else:
             self.state_machine.reset_receiver_speaking_counter()
         return not self.handle_initator_waiting(chunk)
 
@@ -149,19 +146,17 @@ class ChunkHandler:
         return self.handle_initator_waiting(chunk)
 
     def _can_resume_speaking(self):
-        can_speak = self.state_machine.inc_receiver_silence_counter()
+        can_speak = self.state_machine.silence_counter >= self.state_machine.max_silence_counter
         if can_speak:
             if self.state_machine.state == "waiting_in_queue":
                 self.state_machine.state = "start_opener_speaking"
             else:
                 self.state_machine.state = "start_speaking"
             self.state_machine.reset_receiver_silence_counter()
-        # else:
-        #     self.state_machine.reset_counter()
         return can_speak
 
     def _should_stop_speaking(self):
-        should_stop = self.state_machine.inc_receiver_speaking_counter()
+        should_stop = self.state_machine.speaker_counter >= self.state_machine.max_speaker_counter
         if should_stop:
             self.state_machine.state = "waiting"
             self.state_machine.reset_receiver_speaking_counter()
