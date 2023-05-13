@@ -147,17 +147,20 @@ def recieve_audio():
         
         #moved to /start_call for now ..
         chunk_handler.transition_to_wait()
+        print("from start_opener_speaking to wait")
     elif chunk_handler.state_machine.state == "start_speaking":
          
         last_answer = conv_handler.get_paragraph(role="reciever")
 
+        gpt_answer =""
         for delta in chatgpt.get_response_by_delimiter(last_answer):
             audio_segment = tts.text_to_speech_numpy_pmc(delta)
-            print(delta)
+            gpt_answer += delta
             bytes = audio_segment.tobytes()
             write_to_queue(bytes)
         
         chunk_handler.transition_to_wait()
+        conv_handler.append_initiator_text(gpt_answer)
         
     elif chunk_handler.state_machine.state == "speaking":
         print("still speaking")
