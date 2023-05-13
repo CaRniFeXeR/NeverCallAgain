@@ -163,7 +163,8 @@ class ChunkHandler:
         return should_stop
 
     def start_call(self):
-        self.state_machine.state = "waiting_in_queue"
+        #TODO queue waiting skipped for now ..
+        self.state_machine.state = "start_opener_speaking" 
 
     def transition_to_wait(self):
         self.state_machine.state = "waiting"

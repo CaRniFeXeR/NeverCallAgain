@@ -118,45 +118,44 @@ def index():
 def recieve_audio():
     """Displays the index page accessible at '/'"""
 
-    print("reciving data")
+    # print("reciving data")
     data = request.data
 
     data_with_head = get_wave_header(sample_rate=16000) + data
     data_np = np.frombuffer(data, dtype=np.int32)
 
-    # voice_handler.handle_input_byte_string(data)
-
-    # chunk_handler.handle_input_byte_string(data)
-    print("chunk size", data_np.shape)
+    # print("chunk size", data_np.shape)
     data_processed, can_speak = chunk_handler.process_chunk(data_np)
+    print("state: " + chunk_handler.state_machine.state)
+
 
     if chunk_handler.state_machine.state == "waiting_in_queue":
         print("waiting in queue")
-        chunk_handler.transition_to_wait() #TODO maybe remove in future
+        # chunk_handler.transition_to_wait() #TODO maybe remove in future
     elif chunk_handler.state_machine.state == "start_opener_speaking":
         
         #moved to /start_call for now ..
-        chunk_handler.transition_to_wait()
+        # chunk_handler.transition_to_wait()
         print("from start_opener_speaking to wait")
     elif chunk_handler.state_machine.state == "start_speaking":
          
         last_answer = conv_handler.get_paragraph(role="receiver")
 
-        gpt_answer =""
+        gpt_answer =" "
         for delta in chatgpt.get_response_by_delimiter(last_answer):
             audio_segment = tts.text_to_speech_numpy_pmc(delta)
-            gpt_answer += delta
+            gpt_answer += " " + delta
             bytes = audio_segment.tobytes()
             write_to_queue(bytes)
         
-        chunk_handler.transition_to_wait()
+        # chunk_handler.transition_to_wait()
         conv_handler.append_initiator_text(gpt_answer)
         
     elif chunk_handler.state_machine.state == "speaking":
         print("still speaking")
-        n_chunks = data_np.shape[0] // 1000
-        write_to_queue(get_empty_wave_bytes(header=False, chunk_size=1000, n_chunks=n_chunks))
-        chunk_handler.transition_to_wait()
+        # n_chunks = data_np.shape[0] // 1000
+        # write_to_queue(get_empty_wave_bytes(header=False, chunk_size=1000, n_chunks=n_chunks))
+        # chunk_handler.transition_to_wait()
 
 
     elif chunk_handler.state_machine.state == "waiting":
