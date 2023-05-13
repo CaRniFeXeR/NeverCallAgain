@@ -8,12 +8,20 @@ import numpy as np
 
 # reminder flo credentials
 
+
 def _get_energy(samples) -> float:
-    return np.sum(np.power(samples, 2)) / float(len(samples))
+    # return np.sum(samples-np.min(samples))/(np.max(samples)-np.min(samples)) / float(len(samples))
+    return np.sum(np.abs(samples) / 2147483647) / float(len(samples))
+    # return np.sum(np.abs(samples)) / float(len(samples))
 
 
-def _detect_silence(energy, silence_threshold):
-    if energy <= silence_threshold:
+def _detect_silence(audio_chunk, silence_threshold):
+    # max_energy = _get_energy([np.max(audio_chunk)])
+    avg_energy = _get_energy(audio_chunk)
+    print(avg_energy)
+    # print(max_energy)
+    # print("ratio: ", avg_energy / max_energy)
+    if avg_energy < silence_threshold:
         return True
     return False
 
@@ -41,8 +49,8 @@ class _StateMachine:
                     "call_ended",
                     "call_interrupted"]
 
-    # assuming 0.25 seconds per chunk, 1.5 seconds of silence is 6 chunks
-    def __init__(self, max_silence_counter: int = 6, max_speaker_counter: int = 3) -> None:
+    # assuming 0.25 seconds per chunk, 1 second of silence is 4 chunks
+    def __init__(self, max_silence_counter: int = 3, max_speaker_counter: int = 2) -> None:
         self.state = "call_pending"
         # "listening" as a toggle, we check each "speech chunk" if the opposite is speaking
         #  if we are in "listening", we transition to "speaking", once the counter reaches max_counter_silence
@@ -84,6 +92,7 @@ class _StateMachine:
         self.receiver_silence_counter += 1
 
     def inc_receiver_speaking_counter(self) -> None:
+        print("Incrementing speaking counter")
         self.receiver_speaker_counter += 1
 
     def reset_receiver_silence_counter(self) -> None:
@@ -106,7 +115,7 @@ class ChunkHandler:
             chunk_config = dict()
         self.state_machine = _StateMachine(
             **chunk_config.get("state_machine_config")) if chunk_config else _StateMachine()
-        self.wait_threshold = chunk_config.get("wait_threshold", 0.1)
+        self.wait_threshold = chunk_config.get("wait_threshold", 0.03)
         self.is_mono = chunk_config.get("is_mono", True)
         pv_access_key = os.environ.get("PICOVOICE_API_KEY")
         assert pv_access_key, "PICOVOICE_API_KEY environment variable not set"
@@ -117,18 +126,18 @@ class ChunkHandler:
     def is_silent_chunk(
             audio_chunk: np.ndarray,
             is_mono: bool = True,
-            silence_threshold: float = 0.1,
+            silence_threshold_ratio: float = 0.1,
     ) -> bool:
         if not is_mono:
             audio_chunk = np.sum(audio_chunk, axis=1) / 2
-        energy = _get_energy(audio_chunk)
-        return _detect_silence(energy, silence_threshold)
+
+        return _detect_silence(audio_chunk, silence_threshold_ratio)
 
     def handle_initator_waiting(self, chunk: np.ndarray) -> bool:
         """
             Checks whether the receiver is silent and updates the state machine accordingly
         """
-        receiver_silent = self.is_silent_chunk(chunk, is_mono=self.is_mono, silence_threshold=self.wait_threshold)
+        receiver_silent = self.is_silent_chunk(chunk, is_mono=self.is_mono, silence_threshold_ratio=self.wait_threshold)
         if receiver_silent:
             self.state_machine.inc_receiver_silence_counter()
         else:
@@ -139,7 +148,8 @@ class ChunkHandler:
         """
             Checks whether the receiver is speaking and updates the state machine accordingly
         """
-        receiver_speaking = not self.is_silent_chunk(chunk, is_mono=self.is_mono, silence_threshold=self.wait_threshold)
+        receiver_speaking = not self.is_silent_chunk(chunk, is_mono=self.is_mono,
+                                                     silence_threshold_ratio=self.wait_threshold)
         if receiver_speaking:
             self.state_machine.inc_receiver_speaking_counter()
         else:
@@ -168,7 +178,7 @@ class ChunkHandler:
         return should_stop
 
     def start_call(self):
-        #TODO queue waiting skipped for now ..
+        # TODO queue waiting skipped for now ..
         self.state_machine.state = "start_opener_speaking"
 
     def transition_to_wait(self):
@@ -177,6 +187,7 @@ class ChunkHandler:
     # todo: chunk implictly assumed to be from caller or receive, depending on state?
     #  should we support the case when caller and receiver talk simultanously?
     def process_chunk(self, chunk: np.ndarray) -> Tuple[np.ndarray, bool]:
+        # Problem: Transitions from "speaking" to "listening" too early
         can_speak = False
         if self.state_machine.state == "call_pending":
             # we probably don't need to do any processing during call_pending
@@ -185,7 +196,7 @@ class ChunkHandler:
             if self.handle_queue_wait(chunk):
                 can_speak = self._can_resume_speaking()
         elif self.state_machine.state == "speaking":
-            # todo process chunks
+            # when initator is speaking, we need to check if the receiver is silent
             if self.handle_receiver_speaking(chunk):
                 can_speak = not self._should_stop_speaking()
         elif self.state_machine.state in ["start_speaking", "start_opener_speaking"]:
