@@ -21,3 +21,11 @@ class VoiceHandler:
         transcript = self.stt.speech_to_text(np.array(stream.read(self.chunk_size)))
 
         print(transcript)
+
+    def handle_input_byte_string(self, byte_string: bytes):
+        """
+        Handles an input byte string.
+        """
+        transcript = self.stt.speech_to_text(byte_string)
+
+        print(transcript)
