@@ -20,6 +20,8 @@ from wav_handler import get_wave_header, split_wave_bytes_into_chunks
 # from src.backend.TtS import TextToSpeech
 
 app = Flask(__name__, static_folder="./../frontend")
+app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 30}
+
 sockets = Sock(app)
 
 # Create a byte stream
@@ -93,13 +95,52 @@ def index():
     return flask.send_file("./../frontend/index.html")
 
 
+@app.route("/recieve_audio2", methods=["POST"])
+def recieve_audio2():
+    """Displays the index page accessible at '/'"""
+
+    print("reciving data")
+    data = request.data
+
+    data = get_wave_header(sample_rate=16000) + data
+
+    voice_handler.handle_input_byte_string(data)
+
+    with open("output.wav","wb") as f:
+        f.write(data)
+
+    response = jsonify("File received and saved!")
+    response.headers.add('Access-Control-Allow-Origin', '*')
+
+    return response
+
+@app.route("/recieve_audio", methods=["POST"])
+def recieve_audio():
+    """Displays the index page accessible at '/'"""
+    files = request.files
+    file = files.get('file')
+    content = file.read()
+
+
+    with open('test.webm', 'wb') as f:
+        f.write(content)
+
+    voice_handler.handle_input_byte_string(content)
+
+    response = jsonify("File received and saved!")
+    response.headers.add('Access-Control-Allow-Origin', '*')
+
+    return response
+
+
 @sockets.route("/recieve_audio_input")
 def handle_audio_stream(ws):
+    print("reciving audio..")
     while not ws.connected:
         recieved_audio = ws.receive()
         print("recieved audio")
         print(recieved_audio)
-        voice_handler.handle_audio(recieved_audio)
+        voice_handler.handle_input_stream(recieved_audio)
     
 
 

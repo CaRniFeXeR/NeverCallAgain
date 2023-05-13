@@ -77,51 +77,148 @@ function convertFloat32ToInt16(buffer) {
 
 let stream;
 
+let socket = null
+
+// micro_btn.addEventListener("click", async () => {
+//   // Prompt the user to use their microphone.
+//   stream = await navigator.mediaDevices.getUserMedia({
+//     audio: true,
+
+//   });
+//   const context = new AudioContext({sampleRate: 16000});
+//   const source = context.createMediaStreamSource(stream);
+
+//   const mediaRecorder = new MediaRecorder(source.mediaStream); //, options = {mimeType :'audio/ogg'});
+//   console.log('Connected!');
+//   mediaRecorder.start(1000);
+
+//   mediaRecorder.addEventListener('dataavailable', event => {
+//     console.log("data available")
+//     var data = new FormData()
+//     data.append('file', event.data , 'file')
+//     fetch('http://172.20.224.125:5000/recieve_audio', {
+//           method: 'POST',
+//           body: data
+
+//       }).then(response => response.json()
+//       ).then(json => {
+//           console.log(json)
+//       });
+//     // const reader = new FileReader();
+//     // reader.readAsDataURL(event.data);
+//     // reader.onloadend = () => {
+//     //   const base64data = reader.result.split(',')[1];
+//     //   socket.emit('audio_chunk', base64data);
+//     // };
+//   });
+
+// //   const socket = new WebSocket('ws://172.20.224.125:5000/recieve_audio_input');
+
+// //   socket.addEventListener('open', function(event) {
+    
+// // });
+
+
+
+// });
+
+var buffer_count = 0
+var buffer_arry = new Int32Array()
+
 micro_btn.addEventListener("click", async () => {
-  // Prompt the user to use their microphone.
-  stream = await navigator.mediaDevices.getUserMedia({
-    audio: true,
-  });
-  const context = new AudioContext();
-  const source = context.createMediaStreamSource(stream);
 
-  const mediaRecorder = new MediaRecorder(source.mediaStream);
-  
 
-  const socket = new WebSocket('ws://172.20.224.125:5000/recieve_audio_input');
+navigator.mediaDevices.getUserMedia({ audio: true })
+.then(stream => {
+  const audioContext = new AudioContext({sampleRate: 16000});
+  const micSource = audioContext.createMediaStreamSource(stream);
 
-  socket.addEventListener('open', function(event) {
-    console.log('Connected!');
+  audioContext.audioWorklet.addModule('./static/processor.js')
+    .then(() => {
+      const micProcessor = new AudioWorkletNode(audioContext, 'my-worklet-processor');
+      micProcessor.port.onmessage =  ({ data }) => {
+        // debugger;
+        // socket.send(data.data)
+        // socket.emit('my event', {data: 'I\'m connected!2'});
+        // buffer_list.push(data.data)
+        var myData = data.outputData;
 
-    mediaRecorder.addEventListener('dataavailable', event => {
-      const reader = new FileReader();
-      reader.readAsDataURL(event.data);
-      print("data available")
-      reader.onloadend = () => {
-        const base64data = reader.result.split(',')[1];
-        socket.emit('audio_chunk', base64data);
+        buffer_arry = combinedArray = new Int32Array([...buffer_arry, ...myData]);
+        buffer_count += 1
+
+        if (buffer_count == 500) {
+
+          fetch('/recieve_audio2', {
+            method: 'POST',
+            body: buffer_arry
+          })
+
+          buffer_count = 0
+          buffer_arry = new Int32Array();
+
+        }
+
       };
+      micSource.connect(micProcessor);
+      micProcessor.connect(audioContext.destination);
     });
-    mediaRecorder.start(1000);
 });
 
+// socket = new WebSocket('ws://172.20.224.125:5000/recieve_audio_input')
+
+// // buffer_list = []s
+
+// // Add an event listener to handle incoming messages
+// socket.addEventListener('message', (event) => {
+//   console.log(`Received message: ${event.data}`);
+// });
+
+// // Add an event listener to handle connection close
+// socket.addEventListener('close', (event) => {
+//   console.log('WebSocket connection closed');
+// });
+
+// // Add an event listener to handle errors
+// socket.addEventListener('error', (event) => {
+//   console.log(`WebSocket error: ${event}`);
+// });
+
+// socket.addEventListener('open', function(event) {
+//   console.log('Connected!');
+//   // socket.send("sdfsdfsdf")
+//   // socket.emit('my event', {data: 'I\'m connected!'});
 
 
+
+// });
+
+  // navigator.getUserMedia({ audio: true },
+  //   function (e) {
+  //       // creates the audio context
+  //       window.AudioContext = window.AudioContext || window.webkitAudioContext;
+  //       context = new AudioContext();
+
+  //       // creates an audio node from the microphone incoming stream
+  //       mediaStream = context.createMediaStreamSource(e);
+
+  //       // https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/createScriptProcessor
+  //       var bufferSize = 2048;
+  //       var numberOfInputChannels = 2;
+  //       var numberOfOutputChannels = 2;
+  //       if (context.createScriptProcessor) {
+  //           recorder = context.createScriptProcessor(bufferSize, numberOfInputChannels, numberOfOutputChannels);
+  //       } else {
+  //           recorder = context.createJavaScriptNode(bufferSize, numberOfInputChannels, numberOfOutputChannels);
+  //       }
+
+  //       recorder.onaudioprocess = function (e) {
+  //           console.log("on audio progress");
+  //       }
+
+  //       // we connect the recorder with the input stream
+  //       mediaStream.connect(recorder);
+  //       recorder.connect(context.destination);
+
+
+  //     });
 });
-
-  // Load and execute the module script.
-  // await context.audioWorklet.addModule("processor.js");
-  // // Create an AudioWorkletNode. The name of the processor is the
-  // // one passed to registerProcessor() in the module script.
-  // const processor = new AudioWorkletNode(context, "processor");
-
-  // source.connect(processor).connect(context.destination);
-// });
-
-// stopMicrophoneButton.addEventListener("click", () => {
-//   // Stop the stream.
-//   stream.getTracks().forEach(track => track.stop());
-
-//   log("Your microphone audio is not used anymore.");
-// });
-  
