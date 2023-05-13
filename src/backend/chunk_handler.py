@@ -1,8 +1,19 @@
 import os
+import time
 from typing import Any, Mapping, Tuple
 import pvcobra as pvcobra
 
 import numpy as np
+
+
+def _get_energy(samples) -> float:
+    return np.sum(np.power(samples, 2)) / float(len(samples))
+
+
+def _detect_silence(energy, silence_threshold):
+    if energy <= silence_threshold:
+        return True
+    return False
 
 
 class _StateMachine:
@@ -27,13 +38,16 @@ class _StateMachine:
                     "call_ended",
                     "call_interrupted"]
 
-    def __init__(self, max_counter_silence: int = 5) -> None:
+    # assuming 0.25 seconds per chunk, 1.5 seconds of silence is 6 chunks
+    def __init__(self, max_silence_counter: int = 6, max_speaker_counter: int = 3) -> None:
         self.state = "call_pending"
         # "waiting" as a toggle, we check each "speech chunk" if the opposite is speaking
         #  if we are in "waiting", we transition to "speaking", once the counter reaches max_counter_silence
         #  "wait mode" is initated again, once our transcript is empty
         self.silence_counter = 0
-        self.max_counter_silence = max_counter_silence
+        self.speaker_counter = 0
+        self.max_silence_counter = max_silence_counter
+        self.max_speaker_counter = max_speaker_counter
 
     @property
     def state(self) -> str:
@@ -52,19 +66,33 @@ class _StateMachine:
     def silence_counter(self, new_counter=0):
         self._silence_counter = new_counter
 
-    def inc_counter(self) -> bool:
+    @property
+    def speaker_counter(self):
+        return self._speaker_counter
+
+    @speaker_counter.setter
+    def speaker_counter(self, new_counter=0):
+        self._speaker_counter = new_counter
+
+    def inc_receiver_silence_counter(self) -> bool:
         self.silence_counter += 1
-        if self._silence_counter >= self.max_counter_silence:
+        if self._silence_counter >= self.max_silence_counter:
             return True
         else:
             return False
 
-    def reset_counter(self) -> None:
-        self.silence_counter = 0
+    def inc_receiver_speaking_counter(self) -> bool:
+        self.speaker_counter += 1
+        if self._speaker_counter >= self.max_speaker_counter:
+            return True
+        else:
+            return False
 
-    def check_opposite_speaking(self) -> bool:
-        pass
-        # todo call logic to detect if opposite is speaking or not
+    def reset_receiver_silence_counter(self) -> None:
+        self._silence_counter = 0
+
+    def reset_receiver_speaking_counter(self) -> None:
+        self._speaker_counter = 0
 
     def synthesis_response(self):
         pass
@@ -76,37 +104,68 @@ class _StateMachine:
 
 class ChunkHandler:
     def __init__(self, chunk_config: Mapping[str, Any] = None):
+        if chunk_config is None:
+            chunk_config = dict()
         self.state_machine = _StateMachine(
             **chunk_config.get("state_machine_config")) if chunk_config else _StateMachine()
-        self.wait_threshold = chunk_config.get("wait_threshold") if chunk_config else 0.2
+        self.wait_threshold = chunk_config.get("wait_threshold", 0.1)
+        self.is_mono = chunk_config.get("is_mono", True)
         pv_access_key = os.environ.get("PICOVOICE_API_KEY")
         assert pv_access_key, "PICOVOICE_API_KEY environment variable not set"
         self.cobra = pvcobra.create(access_key=pv_access_key)
+        self.chunk_length = chunk_config.get("chunk_length", 4000)
 
-    def check_waiting(self, chunk: np.ndarray) -> bool:
-        # todo: What object does cobra even expect
-        if self.cobra.process(chunk) > self.wait_threshold:
-            return True
-        return False
+    @staticmethod
+    def is_silent_chunk(
+            audio_chunk: np.ndarray,
+            is_mono: bool = True,
+            silence_threshold: float = 0.1,
+    ) -> bool:
+        if not is_mono:
+            audio_chunk = np.sum(audio_chunk, axis=1) / 2
+        energy = _get_energy(audio_chunk)
+        return _detect_silence(energy, silence_threshold)
 
-    def check_speaking(self, chunk: np.ndarray) -> bool:
-        return not self.check_waiting(chunk)
+    def handle_initator_waiting(self, chunk: np.ndarray) -> bool:
+        """
+            Checks whether the receiver is silent and updates the state machine accordingly
+        """
+        receiver_silent = self.is_silent_chunk(chunk, is_mono=self.is_mono, silence_threshold=self.wait_threshold)
+        if not receiver_silent:
+            self.state_machine.reset_receiver_silence_counter()
+        return receiver_silent
 
-    def check_waiting_in_queue(self, chunk: np.ndarray) -> bool:
+    def handle_receiver_speaking(self, chunk: np.ndarray) -> bool:
+        """
+            Checks whether the receiver is speaking and updates the state machine accordingly
+        """
+        receiver_speaking = not self.is_silent_chunk(chunk, is_mono=self.is_mono, silence_threshold=self.wait_threshold)
+        if not receiver_speaking:
+            self.state_machine.reset_receiver_speaking_counter()
+        return not self.handle_initator_waiting(chunk)
+
+    def handle_queue_wait(self, chunk: np.ndarray) -> bool:
         # todo: implement proper queue detection
-        return self.check_waiting(chunk)
+        return self.handle_initator_waiting(chunk)
 
-    def _can_speak(self):
-        can_speak = self.state_machine.inc_counter()
+    def _can_resume_speaking(self):
+        can_speak = self.state_machine.inc_receiver_silence_counter()
         if can_speak:
             if self.state_machine.state == "waiting_in_queue":
                 self.state_machine.state = "start_opener_speaking"
             else:
                 self.state_machine.state = "start_speaking"
-            self.state_machine.reset_counter()
-        else:
-            self.state_machine.reset_counter()
+            self.state_machine.reset_receiver_silence_counter()
+        # else:
+        #     self.state_machine.reset_counter()
         return can_speak
+
+    def _should_stop_speaking(self):
+        should_stop = self.state_machine.inc_receiver_speaking_counter()
+        if should_stop:
+            self.state_machine.state = "waiting"
+            self.state_machine.reset_receiver_speaking_counter()
+        return should_stop
 
     def start_call(self):
         self.state_machine.state = "waiting_in_queue"
@@ -122,16 +181,17 @@ class ChunkHandler:
             # we probably don't need to do any processing during call_pending
             pass
         elif self.state_machine.state == 'waiting_in_queue':
-            if self.check_waiting_in_queue(chunk):
-                can_speak = self._can_speak()
+            if self.handle_queue_wait(chunk):
+                can_speak = self._can_resume_speaking()
         elif self.state_machine.state == "speaking":
             # todo process chunks
-            can_speak = True
+            if self.handle_receiver_speaking(chunk):
+                can_speak = not self._should_stop_speaking()
         elif self.state_machine.state in ["start_speaking", "start_opener_speaking"]:
             can_speak = True
             self.state_machine.state = "speaking"
         elif self.state_machine.state == "waiting":
-            if self.check_waiting(chunk):
-                can_speak = self._can_speak()
+            if self.handle_initator_waiting(chunk):
+                can_speak = self._can_resume_speaking()
         # todo: ending call
         return chunk, can_speak
