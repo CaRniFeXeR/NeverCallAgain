@@ -34,10 +34,11 @@ chatgpt = ChatGPT()
 conv_handler = ConversationHandler()
 
 app.while_speaking_data = get_wave_header(sample_rate=16000)
+app.count_to_write = 0
 
 
 def write_to_queue(bytes):
-    print("write_to_queue")
+    # print("write_to_queue")
     for byte_chunk in split_wave_bytes_into_chunks(bytes):
         data_queue.put(byte_chunk)
 
@@ -126,7 +127,7 @@ def recieve_audio():
     data_with_head = get_wave_header(sample_rate=16000) + data
     data_np = np.frombuffer(data, dtype=np.int32)
 
-    print("chunk size", data_np.shape)
+    # print("chunk size", data_np.shape)
     data_processed, can_speak = chunk_handler.process_chunk(data_np)
     print("state: " + chunk_handler.state_machine.state)
 
@@ -144,6 +145,8 @@ def recieve_audio():
          
         last_answer = conv_handler.get_paragraph(role="receiver")
 
+        print("**** last_answer " + last_answer)
+
         gpt_answer =" "
         for delta in chatgpt.get_response_by_delimiter(last_answer):
             audio_segment = tts.text_to_speech_numpy_pmc(delta)
@@ -153,6 +156,7 @@ def recieve_audio():
         
         # chunk_handler.transition_to_wait()
         conv_handler.append_initiator_text(gpt_answer)
+        print("******** gptanswer *****  " + gpt_answer)
         
     elif chunk_handler.state_machine.state == "speaking":
         pass
@@ -164,8 +168,12 @@ def recieve_audio():
 
     elif chunk_handler.state_machine.state == "listening":
         # if app.while_speaking_data != None:
-        #     with open("test.wav", "wb") as f:
-        #         f.write(app.while_speaking_data)
+        #     app.while_speaking_data + data
+        #     app.count_to_write += 1
+        #     if app.count_to_write == 5:
+        #         with open("test.wav", "wb") as f:
+        #             f.write(app.while_speaking_data)
+        #             print("wrote example")
         #     app.while_speaking_data = None
         #listen to input
         # print("waiting")

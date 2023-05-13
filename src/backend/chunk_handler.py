@@ -21,8 +21,9 @@ def _detect_silence(audio_chunk, silence_threshold):
     # print(max_energy)
     # print("ratio: ", avg_energy / max_energy)
     if avg_energy < silence_threshold:
-        print("Silenc detected with energy: ", avg_energy)
         return True
+
+    print("speak detected with energy: ", avg_energy)
     return False
 
 
@@ -115,7 +116,7 @@ class ChunkHandler:
             chunk_config = dict()
         self.state_machine = _StateMachine(
             **chunk_config.get("state_machine_config")) if chunk_config else _StateMachine()
-        self.wait_threshold = chunk_config.get("wait_threshold", 0.03)
+        self.wait_threshold = chunk_config.get("wait_threshold", 0.05)
         self.is_mono = chunk_config.get("is_mono", True)
         pv_access_key = os.environ.get("PICOVOICE_API_KEY")
         assert pv_access_key, "PICOVOICE_API_KEY environment variable not set"
