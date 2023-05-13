@@ -65,14 +65,12 @@ class _StateMachine:
 
     def inc_counter(self) -> bool:
         self.silence_counter += 1
-        print("inc counter")
         if self._silence_counter >= self.max_counter_silence:
             return True
         else:
             return False
 
     def reset_counter(self) -> None:
-        print("reseting counter")
         self._silence_counter = 0
 
     def check_opposite_speaking(self) -> bool:
@@ -101,7 +99,7 @@ class ChunkHandler:
         self.chunk_length = chunk_config.get("chunk_length", 4096)
 
     @staticmethod
-    def detect_silence_ranges(
+    def is_silent_chunk(
             audio_chunk: np.ndarray,
             is_mono: bool = True,
             silence_threshold: float = 0.1,
@@ -112,7 +110,7 @@ class ChunkHandler:
         return _detect_silence(energy, silence_threshold)
 
     def check_waiting(self, chunk: np.ndarray) -> bool:
-        return self.detect_silence_ranges(chunk, is_mono=self.is_mono, silence_threshold=self.wait_threshold)
+        return self.is_silent_chunk(chunk, is_mono=self.is_mono, silence_threshold=self.wait_threshold)
 
     def check_speaking(self, chunk: np.ndarray) -> bool:
         return not self.check_waiting(chunk)
