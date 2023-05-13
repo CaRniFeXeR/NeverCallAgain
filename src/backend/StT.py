@@ -13,6 +13,7 @@ class SpeechToText:
             "automatic-speech-recognition",
             model="bofenghuang/whisper-small-cv11-german",
             device=device,
+            max_new_tokens=300
         )
 
     def speech_to_text(self, audio: np.ndarray):
