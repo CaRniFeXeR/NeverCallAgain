@@ -33,6 +33,8 @@ chunk_handler = ChunkHandler()
 chatgpt = ChatGPT()
 conv_handler = ConversationHandler()
 
+app.while_speaking_data = get_wave_header(sample_rate=16000)
+
 
 def write_to_queue(bytes):
     print("write_to_queue")
@@ -124,7 +126,7 @@ def recieve_audio():
     data_with_head = get_wave_header(sample_rate=16000) + data
     data_np = np.frombuffer(data, dtype=np.int32)
 
-    # print("chunk size", data_np.shape)
+    print("chunk size", data_np.shape)
     data_processed, can_speak = chunk_handler.process_chunk(data_np)
     print("state: " + chunk_handler.state_machine.state)
 
@@ -157,19 +159,27 @@ def recieve_audio():
         # n_chunks = data_np.shape[0] // 1000
         # write_to_queue(get_empty_wave_bytes(header=False, chunk_size=1000, n_chunks=n_chunks))
         # chunk_handler.transition_to_wait()
+        # app.while_speaking_data = app.while_speaking_data + data
 
 
     elif chunk_handler.state_machine.state == "listening":
+        # if app.while_speaking_data != None:
+        #     with open("test.wav", "wb") as f:
+        #         f.write(app.while_speaking_data)
+        #     app.while_speaking_data = None
         #listen to input
         # print("waiting")
         transcript = voice_handler.handle_input_byte_string(data_with_head)
-        if transcript is None:
+        if transcript is None or transcript == "":
             print("nothing to transcript")
         else:
             conv_handler.append_receiver_text(transcript)
-            print(transcript)
-            n_chunks = data_np.shape[0] // 1000
-            write_to_queue(get_empty_wave_bytes(header=False,n_chunks=n_chunks))
+
+            print("****\n****transcripted:        " +  transcript)
+            # print(transcript)
+        #while listening, send empty bytes
+        n_chunks = data_np.shape[0] // 1000
+        write_to_queue(get_empty_wave_bytes(header=False,n_chunks=n_chunks))
 
     
     # if chunk_handler.state_machine.state == "":

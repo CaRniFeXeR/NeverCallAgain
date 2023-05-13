@@ -14,18 +14,21 @@ class VoiceHandler:
         self.stt = SpeechToText()
         self.chunk_size = chunk_size
 
-    def handle_input_stream(self, stream: IO[bytes]):
+    def handle_input_stream(self, stream: IO[bytes]) -> str:
         """
         Handles an input stream of bytes.
         """
         transcript = self.stt.speech_to_text(np.array(stream.read(self.chunk_size)))
 
-        print(transcript)
+        # print(transcript)
 
-    def handle_input_byte_string(self, byte_string: bytes):
+        return transcript
+
+    def handle_input_byte_string(self, byte_string: bytes) -> str:
         """
         Handles an input byte string.
         """
         transcript = self.stt.speech_to_text(byte_string)
 
-        print(transcript)
+        # print(transcript)
+        return transcript
