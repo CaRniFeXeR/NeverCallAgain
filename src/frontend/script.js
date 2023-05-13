@@ -77,7 +77,7 @@ function registerMircophone() {
         buffer_count += 1;
 
         if (buffer_count == 500) {
-          fetch("/recieve_audio2", {
+          fetch("/recieve_audio", {
             method: "POST",
             body: buffer_arry,
           });
@@ -93,8 +93,13 @@ function registerMircophone() {
 }
 
 micro_btn.addEventListener("click", async () => {
+  registerMircophone()
+});
 
-  const data = { text_input: inputValue };
+const call_btn = document.getElementById("call_btn");
+call_btn.addEventListener("click", async () => {
+
+  const data = { text_input: "dummyInput just for now TODO: change this pls" };
   const options = {
     method: 'POST',
     headers: {
@@ -109,6 +114,5 @@ micro_btn.addEventListener("click", async () => {
       registerMircophone()
       registerAudioPlayBackStream()
     })
-    .then(data => console.log(data))
     .catch(error => console.error(error));
 });

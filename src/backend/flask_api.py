@@ -7,8 +7,8 @@ from pathlib import Path
 import flask
 import numpy as np
 import sounddevice as sd
-from backend.chunk_handler import ChunkHandler
-from backend.conversation_handler import ConversationHandler
+from chunk_handler import ChunkHandler
+from conversation_handler import ConversationHandler
 from chatgpt import ChatGPT
 from flask import Flask, Response, jsonify, request, send_from_directory
 # from flask_socketio import SocketIO
@@ -44,7 +44,7 @@ def write_to_queue(bytes):
 
 def generate_audio():
     print("generate_audio")
-    time.sleep(1)
+    # time.sleep(1)
     if not app.writing_data and data_queue.empty():
         time.sleep(1)  # lol hack
     while app.writing_data or not data_queue.empty():
@@ -52,7 +52,8 @@ def generate_audio():
             data = data_queue.get()
             yield data
         if app.writing_data and data_queue.empty():
-            time.sleep(1)  # lol hack
+            time.sleep(3)  # lol hack
+            print("wating for new data to stream")
 
     print("finished gen audio")
 
@@ -91,6 +92,7 @@ def submit():
 
 @app.route("/start_call", methods=["POST"])
 def start_call():
+    app.write_data = True
     chunk_handler.start_call()
     opener_text = "Hallo ich möchte gerne einen Termin für Florian Pfiel ausmachen. Haben Sie nächsten Donnerstag um 9:30 Uhr zeit?"
     conv_handler.append_initiator_text(opener_text)
@@ -100,6 +102,11 @@ def start_call():
     bytes = audio_segment.tobytes()
 
     write_to_queue(bytes)
+
+    response = {"message": "Alright alright alright!"}
+    return jsonify(response)
+
+
 
 
 @app.route("/static/<path:filename>")
@@ -121,7 +128,7 @@ def recieve_audio():
     print("reciving data")
     data = request.data
 
-    data = get_wave_header(sample_rate=16000) + data
+    data_with_head = get_wave_header(sample_rate=16000) + data
     data_np = np.array(data, dtype=np.int32)
 
     # voice_handler.handle_input_byte_string(data)
@@ -137,7 +144,7 @@ def recieve_audio():
         chunk_handler.transition_to_wait()
     elif chunk_handler.state_machine.state == "start_speaking":
          
-        last_answer = conv_handler._receiver_text[-1]
+        last_answer = conv_handler.get_paragraph(role="reciever")
 
         for delta in chatgpt.get_response_by_delimiter(last_answer):
             audio_segment = tts.text_to_speech_numpy_pmc(delta)
