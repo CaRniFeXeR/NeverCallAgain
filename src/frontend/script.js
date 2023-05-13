@@ -32,6 +32,13 @@ function registerAudioPlayBackStream() {
     <source id="audio_src" type="audio/x-wav" sampleRate=22050 src="/stream_audio">
     </audio>  
   `
+
+  const audio = document.getElementById("audio_src");
+
+  // Wait until the audio is loaded and ready to play
+  audio.addEventListener("canplay", function() {
+    audio.play();
+  });
 }
 
 btn.onclick = function () {
@@ -61,7 +68,7 @@ function registerMircophone() {
 
   navigator.mediaDevices.getUserMedia({ audio: true })
 .then(stream => {
-  const audioContext = new AudioContext({sampleRate: 16000});
+  const audioContext = new AudioContext({sampleRate: 16000, blockSize: 400});
   const micSource = audioContext.createMediaStreamSource(stream);
 
   audioContext.audioWorklet.addModule('./static/processor.js')
@@ -76,7 +83,8 @@ function registerMircophone() {
         ]);
         buffer_count += 1;
 
-        if (buffer_count == 500) {
+        if (buffer_count == 10) {
+          //10 times 400 samples is 0.25s with 16kHz sample rate
           fetch("/recieve_audio", {
             method: "POST",
             body: buffer_arry,

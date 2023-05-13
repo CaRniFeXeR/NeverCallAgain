@@ -139,10 +139,12 @@ def recieve_audio():
     # voice_handler.handle_input_byte_string(data)
 
     # chunk_handler.handle_input_byte_string(data)
+    print("chunk size", data_np.shape)
     data_processed, can_speak = chunk_handler.process_chunk(data_np)
 
     if chunk_handler.state_machine.state == "waiting_in_queue":
         print("waiting in queue")
+        chunk_handler.transition_to_wait() #TODO maybe remove in future
     elif chunk_handler.state_machine.state == "start_opener_speaking":
         
         #moved to /start_call for now ..
@@ -171,10 +173,12 @@ def recieve_audio():
     elif chunk_handler.state_machine.state == "waiting":
         #listen to input
         print("waiting")
-        transcript = voice_handler.handle_input_byte_string(data)
-        conv_handler.append_receiver_text(transcript)
-        n_chunks = data_np.shape[0] // 1024
-        write_to_queue(get_empty_wave_bytes(header=False,n_chunks=n_chunks))
+        transcript = voice_handler.handle_input_byte_string(data_with_head)
+        if transcript is not None:
+            conv_handler.append_receiver_text(transcript)
+            print(transcript)
+            n_chunks = data_np.shape[0] // 1024
+            write_to_queue(get_empty_wave_bytes(header=False,n_chunks=n_chunks))
 
 
     
