@@ -70,6 +70,7 @@ export default {
   data() {
     return {
       inputText: "",
+      baseUrlBackend: "http://localhost:5000/",
 
       //manages which div / components are currently getting displayed
       // 0 = display call overview; 1 = display call creation
@@ -121,10 +122,24 @@ export default {
       console.log("create new call");
     },
 
-    createCall(param) {
-      console.log("schedule appointment with param: ", param);
+    async createCall(call) {
+      console.log("schedule appointment with param: ", call);
+
+      let url = this.baseUrlBackend + "start_call";
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(call),
+      });
+
       this.div_display_state = 0;
-      this.calls.push(param);
+
+      return response;
+
+      this.calls.push(call);
       this.calls_to_display = this.calls;
     },
   },
