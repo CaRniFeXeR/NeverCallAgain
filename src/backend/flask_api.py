@@ -18,6 +18,8 @@ app = Flask(__name__, static_folder="./../frontend")
 
 data_queue = queue.Queue()
 app.writing_data = False
+app.conv_started = False
+app.opener_text = ""
 generate_debug_file = False
 
 tts = TextToSpeech()
@@ -84,6 +86,7 @@ def submit():
 @app.route("/start_call", methods=["POST"])
 def start_call():
     app.writing_data = True
+    app.conv_started = False
     chunk_handler.start_call()
     opener_text = "Hallo ich möchte gerne einen Termin für Florian Pfiel ausmachen. Haben Sie nächsten Donnerstag um neun uhr zeit?"
     conv_handler.append_initiator_text(opener_text)
@@ -133,15 +136,20 @@ def recieve_audio():
 
         # moved to /start_call for now ..
         # chunk_handler.transition_to_wait()
-        print("from start_opener_speaking to wait")
+        # print("from start_opener_speaking to wait")
+        pass
     elif chunk_handler.state_machine.state == "start_speaking":
 
         last_answer = conv_handler.get_paragraph(role="receiver")
 
-        print("**** last_answer " + last_answer)
+        print("**** last_answer: " + last_answer)
+
+        if not app.conv_started:
+            app.conv_started = True
+            last_answer = app.opener_text + last_answer
 
         gpt_answer = " "
-        for delta in chatgpt.get_response_by_delimiter(last_answer):
+        for delta in chatgpt.get_response_by_delimiter(last_answer, with_history=True):
             audio_segment = tts.text_to_speech_numpy_pmc(delta)
             gpt_answer += " " + delta
             bytes = audio_segment.tobytes()
