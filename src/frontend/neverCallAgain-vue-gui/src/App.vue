@@ -56,8 +56,28 @@ import CreateCall from "./components/CreateCall.vue";
 import { Slide } from "vue3-burger-menu";
 import Call from "./models/Call";
 
-// border: 1px solid black;
-let micProcessor = null;
+const close_btn = document.getElementById("close_btn");
+close_btn.addEventListener("click", async () => {
+  console.log("stopping call");
+  var div = document.getElementById("audio_container");
+
+  div.innerHTML = ``; //remove audio element
+
+  const data = { text_input: "close request" };
+  const options = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  };
+
+  fetch("/reset_conv", options)
+    .then((response) => {
+      console.log("call reseted");
+    })
+    .catch((error) => console.error(error));
+});
 
 export default {
   name: "App",
@@ -162,7 +182,7 @@ export default {
       var div = document.getElementById("audio_container");
 
       div.innerHTML = `
-        <audio controls="" id="audio_ctrl">
+        <audio controls="" id="audio_ctrl" style="display: none">
         <source id="audio_src" type="audio/x-wav" sampleRate=22050 src="/stream_audio">
         </audio>  
       `;
