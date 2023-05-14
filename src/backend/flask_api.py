@@ -4,6 +4,7 @@ import time
 import prompt_creation_helpers
 import flask
 import numpy as np
+import json
 from chunk_handler import ChunkHandler
 from conversation_handler import ConversationHandler
 from chatgpt import ChatGPT
@@ -11,7 +12,13 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from TtS import TextToSpeech
 from src.backend.logging_util import def_logger, prepare_log_file
 from voice_handler import VoiceHandler
-from wav_handler import get_empty_wave_bytes, get_wave_header, split_wave_bytes_into_chunks
+from wav_handler import (
+    get_empty_wave_bytes,
+    get_wave_header,
+    split_wave_bytes_into_chunks,
+)
+from db_handler import DB_Handler
+from call_model import Call
 
 
 app = Flask(__name__, static_folder="./../frontend")
@@ -27,6 +34,8 @@ voice_handler = VoiceHandler()
 chunk_handler = ChunkHandler()
 chatgpt = ChatGPT()
 conv_handler = ConversationHandler()
+db_handler = DB_Handler()
+
 
 app.while_speaking_data = get_wave_header(sample_rate=16000)
 app.count_to_write = 0
@@ -89,7 +98,21 @@ def start_call():
     app.conv_started = False
     chunk_handler.start_call()
     # data = request.json
-    data = {'title': 'asdadasd', 'state': 1, 'receiverName': 'Deim', 'receiverPhonenr': 'dfdf', 'initiatorName': 'Hoffmann', 'possibleDatetimes': [{'selectedDate': '2023-05-20', 'selectedStartTime': '08:00', 'selectedEndTime': '12:00'}], 'result': None}
+    data = {
+        "title": "asdadasd",
+        "state": 1,
+        "receiverName": "Deim",
+        "receiverPhonenr": "dfdf",
+        "initiatorName": "Hoffmann",
+        "possibleDatetimes": [
+            {
+                "selectedDate": "2023-05-20",
+                "selectedStartTime": "08:00",
+                "selectedEndTime": "12:00",
+            }
+        ],
+        "result": None,
+    }
     date_app_req = prompt_creation_helpers.date_to_string(
         data["possibleDatetimes"][0]["selectedDate"]
     )
@@ -129,6 +152,21 @@ def return_client_files(filename: str):
     return send_from_directory("./../frontend", filename)
 
 
+@app.route("/add_call", methods=["POST"])
+def add_call():
+    print(request.headers)
+    call_json = request.get_json()
+    new_call = Call(**call_json)
+    db_handler.insertNewCall(new_call)
+    return "Call erfolgreich erstellt", 201
+
+
+@app.route("/calls", methods=["GET"])
+def get_calls():
+    calls = db_handler.getAllCalls()
+    return [json.dumps(call.__dict__) for call in calls]
+
+
 @app.route("/")
 def index():
     """Displays the index page accessible at '/'"""
@@ -155,13 +193,11 @@ def recieve_audio():
         # print("waiting in queue")
         # chunk_handler.transition_to_wait() #TODO maybe remove in future
     elif chunk_handler.state_machine.state == "start_opener_speaking":
-
         # moved to /start_call for now ..
         # chunk_handler.transition_to_wait()
         # print("from start_opener_speaking to wait")
         pass
     elif chunk_handler.state_machine.state == "start_speaking":
-
         last_answer = conv_handler.get_paragraph(role="receiver")
 
         print("**** last_answer: " + last_answer)
@@ -188,9 +224,8 @@ def recieve_audio():
         # chunk_handler.transition_to_wait()
         # app.while_speaking_data = app.while_speaking_data + data
 
-
     elif chunk_handler.state_machine.state == "listening":
-        if generate_debug_file and  app.while_speaking_data != None:
+        if generate_debug_file and app.while_speaking_data != None:
             app.while_speaking_data = app.while_speaking_data + data
             app.count_to_write += 1
             if app.count_to_write >= 2:
@@ -199,7 +234,7 @@ def recieve_audio():
                     print("wrote example")
                     app.count_to_write = 0
                 app.while_speaking_data = None
-        #listen to input
+        # listen to input
         # print("waiting")
         transcript = voice_handler.handle_input_byte_string(data_with_head)
         if transcript is None or transcript == "":
@@ -216,11 +251,14 @@ def recieve_audio():
     # if chunk_handler.state_machine.state == "":
 
     response = jsonify("Alright alright alright!")
-    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add("Access-Control-Allow-Origin", "*")
 
     return response
 
 
 if __name__ == "__main__":
-    prepare_log_file(log_file_path=os.environ.get("LOG_FILE_PATH", "./log_backend.log"), overwrite=True)
-    app.run(host="172.30.234.161") #os.environ.get("FLASK_HOST_IP", "172.30.234.161"))
+    prepare_log_file(
+        log_file_path=os.environ.get("LOG_FILE_PATH", "./log_backend.log"),
+        overwrite=True,
+    )
+    app.run(host="172.30.234.161")  # os.environ.get("FLASK_HOST_IP", "172.30.234.161"))

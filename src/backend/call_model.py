@@ -1,5 +1,5 @@
 class Call:
-    def init(
+    def __init__(
         self,
         title,
         state,

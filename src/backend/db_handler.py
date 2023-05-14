@@ -1,5 +1,5 @@
 class DB_Handler:
-    def init(self):
+    def __init__(self):
         self.calls = []
 
     def insertNewCall(self, call):

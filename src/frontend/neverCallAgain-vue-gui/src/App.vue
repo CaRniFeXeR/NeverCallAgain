@@ -49,6 +49,7 @@
 </template>
 
 <script>
+import axios from "axios";
 import CardDiv from "./components/CardDiv.vue";
 import AddCardButton from "./components/AddCardButton.vue";
 import CreateCall from "./components/CreateCall.vue";
@@ -75,27 +76,12 @@ export default {
       div_display_state: 0,
 
       //state: 0 = not rdy; 1 = pending; 2 = retrieved
-      calls: [
-        new Call(
-          "Test call",
-          2,
-          "Dr. Palkovits",
-          "01234 110101010",
-          "Werner Faymann",
-          [
-            {
-              selectedDate: "03.02.2032",
-              selectedStartTime: "08:00",
-              selectedEndTime: "10:00",
-            },
-          ],
-          "21.05.2023, 14:00"
-        ),
-      ],
+      calls: [],
       calls_to_display: Array,
     };
   },
-  created() {
+  async created() {
+    await this.fetchCalls();
     this.calls_to_display = this.calls;
   },
 
@@ -117,26 +103,51 @@ export default {
 
     displayCreateCallComponent() {
       this.div_display_state = 1;
-      console.log("create new call");
+    },
+
+    async fetchCalls() {
+      try {
+        const response = await axios.get("http://127.0.0.1:5000/calls");
+        const callData = response.data;
+        const calls = callData.map((callJson) => {
+          const callObj = JSON.parse(callJson);
+          return new Call(
+            callObj.title,
+            parseInt(callObj.state),
+            callObj.receiverName,
+            callObj.receiverPhonenr,
+            callObj.initiatorName,
+            callObj.possibleDatetimes,
+            callObj.result
+          );
+        });
+        this.calls = calls;
+        this.calls_to_display = this.calls;
+      } catch (error) {
+        console.error(error);
+      }
     },
 
     async createCall(call) {
-      console.log("schedule appointment with param: ", call);
       this.div_display_state = 0;
-      this.calls.push(call);
-      this.calls_to_display = this.calls;
 
-      let url = this.baseUrlBackend + "start_call";
-
-      const response = await fetch(url, {
+      const options = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(call),
-      });
+      };
 
-      return response;
+      await fetch("http://127.0.0.1:5000/add_call", options)
+        .then((response) => {
+          console.log("added call");
+        })
+        .catch((error) => console.error(error));
+
+      await this.fetchCalls();
+
+      return;
     },
 
     onlySaveCall(call) {

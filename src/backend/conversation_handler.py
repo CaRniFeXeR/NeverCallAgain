@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, List, Tuple
 
-from src.backend.logging_util import def_logger
+from logging_util import def_logger
 
 logger = def_logger.getChild(__name__)
 
@@ -43,16 +43,22 @@ class ConversationHandler:
         self._receiver_text = dict()
         self._stepper = 0
 
-    def get_paragraph(self, role: str = "receiver", paragraph: int = -1, paragraph_sep: str = " "):
+    def get_paragraph(
+        self, role: str = "receiver", paragraph: int = -1, paragraph_sep: str = " "
+    ):
         """
-            Returns the paragraph of the conversation.
+        Returns the paragraph of the conversation.
 
-            By default, the last paragraph is returned.
+        By default, the last paragraph is returned.
         """
         if role == "initiator":
-            text_list = self._initiator_text[paragraph if paragraph != -1 else max(self._initiator_text.keys())]
+            text_list = self._initiator_text[
+                paragraph if paragraph != -1 else max(self._initiator_text.keys())
+            ]
         elif role == "receiver":
-            text_list = self._receiver_text[paragraph if paragraph != -1 else max(self._receiver_text.keys())]
+            text_list = self._receiver_text[
+                paragraph if paragraph != -1 else max(self._receiver_text.keys())
+            ]
         else:
             raise ValueError("Invalid role")
 
@@ -60,13 +66,17 @@ class ConversationHandler:
         logger.debug(f"Returning paragraph: {paragraph_text}")
         return paragraph_sep.join(paragraph_text)
 
-    def build_conversation(self, role_prefixes: Tuple[str, str] = ("A: ", "B: "), paragraph_sep: str = " ") -> str:
+    def build_conversation(
+        self, role_prefixes: Tuple[str, str] = ("A: ", "B: "), paragraph_sep: str = " "
+    ) -> str:
         def _build_graphraph(paragraph_list: List[str], role_prefix: str) -> str:
             return role_prefix + paragraph_sep.join(paragraph_list) + "\n"
 
-        merged_text = ''
+        merged_text = ""
         initator_prefix, receiver_prefix = role_prefixes
-        for key in sorted(list(set(self._initiator_text.keys()).union(self._receiver_text.keys()))):
+        for key in sorted(
+            list(set(self._initiator_text.keys()).union(self._receiver_text.keys()))
+        ):
             if key in self._initiator_text:
                 paragraph = paragraph_sep.join(self._initiator_text[key])
                 prefix = initator_prefix
