@@ -180,7 +180,6 @@ export default {
         const audioContext = new AudioContext({ sampleRate: 16000 });
 
         const micSource = audioContext.createMediaStreamSource(stream);
-        globalAudioCtx = audioContext;
 
         audioContext.audioWorklet
           .addModule("./static/processor.js")
