@@ -1,29 +1,6 @@
 let globalAudioCtx = null
 
-const form = document.getElementById("myForm");
-form.addEventListener("submit", function (event) {
-  event.preventDefault(); // prevent the default form submission behavior
-
-  const input = document.getElementById("text_input");
-  const inputValue = input.value;
-
-  const data = { text_input: inputValue };
-  const options = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  };
-
-  fetch("/submit", options)
-    .then((response) => response.json())
-    .then((data) => console.log(data))
-    .catch((error) => console.error(error));
-});
-
 // onclick button with id audio_click
-
 const btn = document.getElementById("audio_btn");
 
 function registerAudioPlayBackStream() {
