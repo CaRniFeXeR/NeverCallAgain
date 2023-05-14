@@ -1,3 +1,5 @@
+let globalAudioCtx = null
+
 const form = document.getElementById("myForm");
 form.addEventListener("submit", function (event) {
   event.preventDefault(); // prevent the default form submission behavior
@@ -62,15 +64,16 @@ function handleMicStream(streamObj) {
 }
 
 
-var buffer_count = 0
-var buffer_arry = new Int32Array()
 
 function registerMircophone() {
 
   navigator.mediaDevices.getUserMedia({ audio: true })
 .then(stream => {
   const audioContext = new AudioContext({sampleRate: 16000});
+
   const micSource = audioContext.createMediaStreamSource(stream);
+  globalAudioCtx = audioContext
+
 
   audioContext.audioWorklet.addModule('./static/processor.js')
     .then(() => {
@@ -78,7 +81,7 @@ function registerMircophone() {
       micProcessor.port.onmessage =  ({ data }) => {
         var myData = data.audio_segement;
 
-        console.log("recieved data of" + myData.length)
+        // console.log("recieved data of" + myData.length)
         
         fetch("/recieve_audio", {
           method: "POST",
@@ -120,7 +123,14 @@ call_btn.addEventListener("click", async () => {
 const close_btn = document.getElementById("close_btn");
 close_btn.addEventListener("click", async () => {
 
-  const data = { text_input: "dummyInput just for now TODO: change this pls" };
+  var div = document.getElementById("audio_container")
+
+  div.innerHTML = `` //remove audio element
+  if (globalAudioCtx != null){
+    globalAudioCtx.audioWorklet.removeModule("./static/processor.js") //remove microphone listener
+  }
+
+  const data = { text_input: "close request" };
   const options = {
     method: 'POST',
     headers: {
@@ -129,11 +139,9 @@ close_btn.addEventListener("click", async () => {
     body: JSON.stringify(data)
   };
 
-  fetch('/start_call', options)
+  fetch('/reset_conv', options)
     .then(response => {
-      console.log("call started")
-      registerMircophone()
-      registerAudioPlayBackStream()
+      console.log("call reseted")
     })
     .catch(error => console.error(error));
 });
