@@ -212,7 +212,7 @@ def recieve_audio():
 
             print("****\n****transcripted:        " + transcript)
         # while listening, send empty bytes
-        n_chunks = data_np.shape[0] // 1000
+        n_chunks = data_np.shape[0] // 2000
         _write_to_queue(get_empty_wave_bytes(header=False, n_chunks=n_chunks))
 
 
