@@ -6,7 +6,7 @@
   >
     <div class="grid-item" style="display: flex">
       <div style="width: 70%">
-        <h2>Call Management</h2>
+        <h2 style="position: relative; left: 60px">Call Management</h2>
       </div>
       <div style="width: 30%"></div>
     </div>
@@ -69,8 +69,7 @@ export default {
   data() {
     return {
       inputText: "",
-      baseUrlBackend: "http://localhost:5000/",
-
+      globalAudioCtx: null,
       //manages which div / components are currently getting displayed
       // 0 = display call overview; 1 = display call creation
       div_display_state: 0,
@@ -107,7 +106,7 @@ export default {
 
     async fetchCalls() {
       try {
-        const response = await axios.get("http://127.0.0.1:5000/calls");
+        const response = await axios.get("/calls");
         const callData = response.data;
         const calls = callData.map((callJson) => {
           const callObj = JSON.parse(callJson);
@@ -139,9 +138,11 @@ export default {
         body: JSON.stringify(call),
       };
 
-      await fetch("http://127.0.0.1:5000/add_call", options)
+      await fetch("/start_call", options)
         .then((response) => {
-          console.log("added call");
+          console.log("started call");
+          this.registerAudioPlayBackStream();
+          this.handleMicStream();
         })
         .catch((error) => console.error(error));
 
@@ -154,6 +155,36 @@ export default {
       this.div_display_state = 0;
       this.calls.push(call);
       this.calls_to_display = this.calls;
+    },
+
+    registerAudioPlayBackStream() {
+      var div = document.getElementById("audio_container");
+
+      div.innerHTML = `
+        <audio controls="" id="audio_ctrl">
+        <source id="audio_src" type="audio/x-wav" sampleRate=22050 src="/stream_audio">
+        </audio>  
+      `;
+
+      const audio = document.getElementById("audio_ctrl");
+
+      // Wait until the audio is loaded and ready to play
+      audio.addEventListener("canplay", function () {
+        console.log("can play");
+        audio.play();
+      });
+    },
+    handleMicStream(streamObj) {
+      // keep the context in a global variable
+      stream = streamObj;
+
+      input = audioContext.createMediaStreamSource(stream);
+
+      input.connect(processor);
+
+      processor.onaudioprocess = (e) => {
+        microphoneProcess(e); // receives data from microphone
+      };
     },
   },
 };
