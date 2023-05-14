@@ -1,3 +1,5 @@
+let globalAudioCtx = null
+
 const form = document.getElementById("myForm");
 form.addEventListener("submit", function (event) {
   event.preventDefault(); // prevent the default form submission behavior
@@ -28,15 +30,15 @@ function registerAudioPlayBackStream() {
   var div = document.getElementById("audio_container")
 
   div.innerHTML = `
-    <audio controls="">
+    <audio controls="" id="audio_ctrl">
     <source id="audio_src" type="audio/x-wav" sampleRate=22050 src="/stream_audio">
     </audio>  
   `
 
-  const audio = document.getElementById("audio_src");
+  const audio = document.getElementById("audio_ctrl");
 
   // Wait until the audio is loaded and ready to play
-  audio.addEventListener("loadedmetadata", function() {
+  audio.addEventListener("canplay", function() {
     console.log("can play")
     audio.play();
   });
@@ -62,41 +64,37 @@ function handleMicStream(streamObj) {
 }
 
 
-var buffer_count = 0
-var buffer_arry = new Int32Array()
 
 function registerMircophone() {
 
   navigator.mediaDevices.getUserMedia({ audio: true })
 .then(stream => {
-  const audioContext = new AudioContext({sampleRate: 16000, blockSize: 16000});
+  const audioContext = new AudioContext({sampleRate: 16000});
+
   const micSource = audioContext.createMediaStreamSource(stream);
+  globalAudioCtx = audioContext
+
 
   audioContext.audioWorklet.addModule('./static/processor.js')
     .then(() => {
       const micProcessor = new AudioWorkletNode(audioContext, 'my-worklet-processor');
       micProcessor.port.onmessage =  ({ data }) => {
-        var myData = data.outputData;
-        // console.log("got data" + myData.length)
+        var myData = data.audio_segement;
 
-        buffer_arry = combinedArray = new Int32Array([
-          ...buffer_arry,
-          ...myData,
-        ]);
-        buffer_count += 1;
+        // console.log("recieved data of" + myData.length)
+        
+        fetch("/recieve_audio", {
+          method: "POST",
+          body: myData,
+        });
 
-        if (buffer_count == 120) {
-          //40 times 128 samples is 0.32s with 16kHz sample rate
-          //100 times 128 samples is 0.8s with 16kHz sample rate
-          fetch("/recieve_audio", {
-            method: "POST",
-            body: buffer_arry,
-          });
+      //auto start playback element
+      // var audio = document.getElementById("audio_src");
 
-          buffer_count = 0;
-          console.log("send audio of size" + buffer_arry.length)
-          buffer_arry = new Int32Array();
-        }
+      // if (audio.readyState >= 2 && audio.paused) {
+      //   audio.play();
+      // }
+
       };
       micSource.connect(micProcessor);
       micProcessor.connect(audioContext.destination);
@@ -132,7 +130,14 @@ call_btn.addEventListener("click", async () => {
 const close_btn = document.getElementById("close_btn");
 close_btn.addEventListener("click", async () => {
 
-  const data = { text_input: "dummyInput just for now TODO: change this pls" };
+  var div = document.getElementById("audio_container")
+
+  div.innerHTML = `` //remove audio element
+  if (globalAudioCtx != null){
+    globalAudioCtx.audioWorklet.removeModule("./static/processor.js") //remove microphone listener
+  }
+
+  const data = { text_input: "close request" };
   const options = {
     method: 'POST',
     headers: {
@@ -141,11 +146,9 @@ close_btn.addEventListener("click", async () => {
     body: JSON.stringify(data)
   };
 
-  fetch('/start_call', options)
+  fetch('/reset_conv', options)
     .then(response => {
-      console.log("call started")
-      registerMircophone()
-      registerAudioPlayBackStream()
+      console.log("call reseted")
     })
     .catch(error => console.error(error));
 });

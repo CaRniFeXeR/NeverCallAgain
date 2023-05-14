@@ -12,6 +12,8 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from TtS import TextToSpeech
 from src.backend.logging_util import def_logger, prepare_log_file
 from voice_handler import VoiceHandler
+from wav_handler import get_empty_wave_bytes, get_wave_header, split_wave_bytes_into_chunks
+logger = def_logger.getChild(__name__)
 from wav_handler import (
     get_empty_wave_bytes,
     get_wave_header,
@@ -23,37 +25,39 @@ from call_model import Call
 
 app = Flask(__name__, static_folder="./../frontend")
 
-app.data_queue = queue.Queue()
-app.writing_data = False
-app.conv_started = False
-app.opener_text = ""
+
 generate_debug_file = False
 
 tts = TextToSpeech()
 voice_handler = VoiceHandler()
-chunk_handler = ChunkHandler()
 chatgpt = ChatGPT()
 conv_handler = ConversationHandler()
 db_handler = DB_Handler()
 
 
-app.while_speaking_data = get_wave_header(sample_rate=16000)
-app.count_to_write = 0
+def _init_conv():
+    app.chunk_handler = ChunkHandler()
+    app.conv_handler = ConversationHandler()
+    app.while_speaking_data = get_wave_header(sample_rate=16000)
+    app.count_to_write = 0
+    app.data_queue = queue.Queue()
+    app.writing_data = False
+    app.conv_started = False
+    app.opener_text = ""
 
-logger = def_logger.getChild(__name__)
+_init_conv()
 
-
-def write_to_queue(bytes):
+def _write_to_queue(bytes):
     # print("write_to_queue")
     for byte_chunk in split_wave_bytes_into_chunks(bytes):
         app.data_queue.put(byte_chunk)
 
 
-def generate_audio():
+def _generate_audio():
     print("generate_audio")
     # stream_count = 0
     if not app.writing_data and app.data_queue.empty():
-        time.sleep(1)  # lol hack
+        time.sleep(1) 
     while app.writing_data or not app.data_queue.empty():
         if not app.data_queue.empty():
             data = app.data_queue.get()
@@ -61,15 +65,22 @@ def generate_audio():
             # stream_count += 1
             # print(f"streaming audio back {stream_count}")
         if app.writing_data and app.data_queue.empty():
-            time.sleep(3)  # lol hack
-            print("wating for new data to stream")
+            time.sleep(0.5)
+            print("waiting for new audio data to stream...")
 
     print("finished gen audio")
 
 
+@app.route("/reset_conv", methods=["POST"])
+def reset_conv():
+    _init_conv()
+
+    response = {"message": "Reset performed successfully"}
+    return jsonify(response)
+
 @app.route("/stream_audio")
 def stream_audio():
-    return Response(generate_audio(), mimetype="audio/x-wav")
+    return Response(_generate_audio(), mimetype="audio/x-wav")
 
 
 @app.route("/submit", methods=["POST"])
@@ -83,7 +94,7 @@ def submit():
         print(delta)
         bytes = audio_segment.tobytes()
 
-        write_to_queue(bytes)
+        _write_to_queue(bytes)
     # print(result)
     app.writing_data = False
     print("app writing data set to false")
@@ -96,7 +107,7 @@ def submit():
 def start_call():
     app.writing_data = True
     app.conv_started = False
-    chunk_handler.start_call()
+    app.chunk_handler.start_call()
     # data = request.json
     data = {
         "title": "asdadasd",
@@ -134,13 +145,13 @@ def start_call():
     app.opener_text = f"Act as participant in a conversation in german language. Your Role setting is: you want to make an appointment at doctor meier, the for you possible time-frame is on the {date_app_req} from {start_time} to {end_time}. Accept all appointment offers in between this frame without any further questions. Decline every offer which is not inside the given time-frame. Continue the following conversation by only one response:"
     app.opener_text = app.opener_text + " " + opener
     print(app.opener_text)
-    conv_handler.append_initiator_text(opener)
+    app.conv_handler.append_initiator_text(opener)
 
     audio_segment = tts.text_to_speech_numpy_pmc(opener)
     # print(delta)
     bytes = audio_segment.tobytes()
     app.data_queue.put(get_wave_header())
-    write_to_queue(bytes)
+    _write_to_queue(bytes)
 
     response = {"message": "Alright alright alright!"}
     print("start call success")
@@ -178,31 +189,37 @@ def index():
 def recieve_audio():
     """Displays the index page accessible at '/'"""
 
-    # print("reciving data")
     data = request.data
 
     data_with_head = get_wave_header(sample_rate=16000) + data
     data_np = np.frombuffer(data, dtype=np.int32)
 
     # print("chunk size", data_np.shape)
-    data_processed, can_speak = chunk_handler.process_chunk(data_np)
-    print("state: " + chunk_handler.state_machine.state)
+    data_processed, can_speak = app.chunk_handler.process_chunk(data_np)
+    print("state: " + app.chunk_handler.state_machine.state)
 
-    if chunk_handler.state_machine.state == "waiting_in_queue":
+    if app.chunk_handler.state_machine.state == "waiting_in_queue":
         pass
         # print("waiting in queue")
+        # app.chunk_handler.transition_to_wait() #TODO maybe remove in future
+    elif app.chunk_handler.state_machine.state == "start_opener_speaking":
+
         # chunk_handler.transition_to_wait() #TODO maybe remove in future
     elif chunk_handler.state_machine.state == "start_opener_speaking":
         # moved to /start_call for now ..
-        # chunk_handler.transition_to_wait()
+        # app.chunk_handler.transition_to_wait()
         # print("from start_opener_speaking to wait")
         pass
+    elif app.chunk_handler.state_machine.state == "start_speaking":
+
+        last_answer = app.conv_handler.get_paragraph(role="receiver")
     elif chunk_handler.state_machine.state == "start_speaking":
         last_answer = conv_handler.get_paragraph(role="receiver")
 
         print("**** last_answer: " + last_answer)
 
         if not app.conv_started:
+            #we have to give chatGPT the opener if this is the first interaction in this conv
             app.conv_started = True
             last_answer = app.opener_text + last_answer
 
@@ -211,19 +228,19 @@ def recieve_audio():
             audio_segment = tts.text_to_speech_numpy_pmc(delta)
             gpt_answer += " " + delta
             bytes = audio_segment.tobytes()
-            write_to_queue(bytes)
+            _write_to_queue(bytes)
 
-        # chunk_handler.transition_to_wait()
-        conv_handler.append_initiator_text(gpt_answer)
+        # app.chunk_handler.transition_to_wait()
+        app.conv_handler.append_initiator_text(gpt_answer)
         print("******** gptanswer *****  " + gpt_answer)
 
-    elif chunk_handler.state_machine.state == "speaking":
+    elif app.chunk_handler.state_machine.state == "speaking":
         pass
-        # n_chunks = data_np.shape[0] // 1000
-        # write_to_queue(get_empty_wave_bytes(header=False, chunk_size=1000, n_chunks=n_chunks))
-        # chunk_handler.transition_to_wait()
-        # app.while_speaking_data = app.while_speaking_data + data
+        #when we are still in speaking mode we don't have to do anything
 
+
+    elif app.chunk_handler.state_machine.state == "listening":
+        if generate_debug_file and  app.while_speaking_data != None:
     elif chunk_handler.state_machine.state == "listening":
         if generate_debug_file and app.while_speaking_data != None:
             app.while_speaking_data = app.while_speaking_data + data
@@ -240,15 +257,13 @@ def recieve_audio():
         if transcript is None or transcript == "":
             print("nothing to transcript")
         else:
-            conv_handler.append_receiver_text(transcript)
+            app.conv_handler.append_receiver_text(transcript)
 
             print("****\n****transcripted:        " + transcript)
-            # print(transcript)
         # while listening, send empty bytes
         n_chunks = data_np.shape[0] // 1000
-        write_to_queue(get_empty_wave_bytes(header=False, n_chunks=n_chunks))
+        _write_to_queue(get_empty_wave_bytes(header=False, n_chunks=n_chunks))
 
-    # if chunk_handler.state_machine.state == "":
 
     response = jsonify("Alright alright alright!")
     response.headers.add("Access-Control-Allow-Origin", "*")
@@ -257,6 +272,8 @@ def recieve_audio():
 
 
 if __name__ == "__main__":
+    prepare_log_file(log_file_path=os.environ.get("LOG_FILE_PATH", "./log_backend.log"), overwrite=True)
+    app.run(host=os.environ.get("FLASK_HOST_IP", "localhost"))
     prepare_log_file(
         log_file_path=os.environ.get("LOG_FILE_PATH", "./log_backend.log"),
         overwrite=True,
