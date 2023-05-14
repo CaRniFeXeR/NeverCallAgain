@@ -113,7 +113,7 @@ export default {
   methods: {
     getData() {
       return {
-        selectedDate: "",
+        selectedDate: this.selectedDate,
         selectedStartTime: this.selectedStartTime,
         selectedEndTime: this.selectedEndTime,
       };
