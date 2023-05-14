@@ -116,10 +116,11 @@ def start_call():
     initiator = data["initiatorName"]
 
     opener = f"Hallo, ich möchte gerne bei Doktor { receiver } einen Termin für {initiator} ausmachen. Haben Sie am {date_text} um {time_text} zeit?"
-    app.opener_text = f"Act as participant in a conversation in german language. Your Role setting is: you want to make an appointment at doctor meier, the for you possible time-frame is on the {date_app_req} from {start_time} to {end_time}. Accept all appointment offers in between this frame without any further questions. Decline every offer which is not inside the given time-frame. Continue the following conversation by only one response:"
+    app.opener_text = f"Act as participant in a conversation in german language. Your Role setting is: you want to make an appointment at doctor meier, the for you possible time-frame is on the {date_app_req} from {start_time} to {end_time}. Accept all appointment offers in between this frame without any further questions. Decline every offer which is not inside the given time-frame. ote, that this is a conversation between my character and your character, i.e., it consists of two people, and we will have to wait for each other's response. Continue the following conversation by only one response:"
     app.opener_text = app.opener_text + " " + opener
+   
     print(app.opener_text)
-    app.conv_handler.append_initiator_text(opener)
+    app.conv_handler.append_initiator_text(opener)  
 
     audio_segment = tts.text_to_speech_numpy_pmc(opener)
     # print(delta)
@@ -224,9 +225,9 @@ def recieve_audio():
 
 if __name__ == "__main__":
     prepare_log_file(log_file_path=os.environ.get("LOG_FILE_PATH", "./log_backend.log"), overwrite=True)
-    app.run(host=os.environ.get("FLASK_HOST_IP", "localhost"))
+    # app.run(host=os.environ.get("FLASK_HOST_IP", "localhost"))
     prepare_log_file(
         log_file_path=os.environ.get("LOG_FILE_PATH", "./log_backend.log"),
         overwrite=True,
     )
-    # app.run(host="172.30.229.11")  # os.environ.get("FLASK_HOST_IP", "172.30.234.161"))
+    app.run(host="172.30.229.11")  # os.environ.get("FLASK_HOST_IP", "172.30.234.161"))
