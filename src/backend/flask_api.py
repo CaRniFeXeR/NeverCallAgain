@@ -4,7 +4,6 @@ import time
 import prompt_creation_helpers
 import flask
 import numpy as np
-import json
 from chunk_handler import ChunkHandler
 from conversation_handler import ConversationHandler
 from chatgpt import ChatGPT
@@ -13,14 +12,9 @@ from TtS import TextToSpeech
 from src.backend.logging_util import def_logger, prepare_log_file
 from voice_handler import VoiceHandler
 from wav_handler import get_empty_wave_bytes, get_wave_header, split_wave_bytes_into_chunks
-logger = def_logger.getChild(__name__)
-from wav_handler import (
-    get_empty_wave_bytes,
-    get_wave_header,
-    split_wave_bytes_into_chunks,
-)
 from db_handler import DB_Handler
 from call_model import Call
+logger = def_logger.getChild(__name__)
 
 
 app = Flask(__name__, static_folder="./../frontend")
@@ -31,9 +25,6 @@ generate_debug_file = False
 tts = TextToSpeech()
 voice_handler = VoiceHandler()
 chatgpt = ChatGPT()
-conv_handler = ConversationHandler()
-db_handler = DB_Handler()
-
 
 def _init_conv():
     app.chunk_handler = ChunkHandler()
@@ -109,21 +100,7 @@ def start_call():
     app.conv_started = False
     app.chunk_handler.start_call()
     # data = request.json
-    data = {
-        "title": "asdadasd",
-        "state": 1,
-        "receiverName": "Deim",
-        "receiverPhonenr": "dfdf",
-        "initiatorName": "Hoffmann",
-        "possibleDatetimes": [
-            {
-                "selectedDate": "2023-05-20",
-                "selectedStartTime": "08:00",
-                "selectedEndTime": "12:00",
-            }
-        ],
-        "result": None,
-    }
+    data = {'title': 'asdadasd', 'state': 1, 'receiverName': 'Deim', 'receiverPhonenr': 'dfdf', 'initiatorName': 'Hoffmann', 'possibleDatetimes': [{'selectedDate': '2023-05-20', 'selectedStartTime': '08:00', 'selectedEndTime': '12:00'}], 'result': None}
     date_app_req = prompt_creation_helpers.date_to_string(
         data["possibleDatetimes"][0]["selectedDate"]
     )
@@ -163,21 +140,6 @@ def return_client_files(filename: str):
     return send_from_directory("./../frontend", filename)
 
 
-@app.route("/add_call", methods=["POST"])
-def add_call():
-    print(request.headers)
-    call_json = request.get_json()
-    new_call = Call(**call_json)
-    db_handler.insertNewCall(new_call)
-    return "Call erfolgreich erstellt", 201
-
-
-@app.route("/calls", methods=["GET"])
-def get_calls():
-    calls = db_handler.getAllCalls()
-    return [json.dumps(call.__dict__) for call in calls]
-
-
 @app.route("/")
 def index():
     """Displays the index page accessible at '/'"""
@@ -204,8 +166,6 @@ def recieve_audio():
         # app.chunk_handler.transition_to_wait() #TODO maybe remove in future
     elif app.chunk_handler.state_machine.state == "start_opener_speaking":
 
-        # chunk_handler.transition_to_wait() #TODO maybe remove in future
-    elif chunk_handler.state_machine.state == "start_opener_speaking":
         # moved to /start_call for now ..
         # app.chunk_handler.transition_to_wait()
         # print("from start_opener_speaking to wait")
@@ -213,8 +173,6 @@ def recieve_audio():
     elif app.chunk_handler.state_machine.state == "start_speaking":
 
         last_answer = app.conv_handler.get_paragraph(role="receiver")
-    elif chunk_handler.state_machine.state == "start_speaking":
-        last_answer = conv_handler.get_paragraph(role="receiver")
 
         print("**** last_answer: " + last_answer)
 
@@ -241,8 +199,6 @@ def recieve_audio():
 
     elif app.chunk_handler.state_machine.state == "listening":
         if generate_debug_file and  app.while_speaking_data != None:
-    elif chunk_handler.state_machine.state == "listening":
-        if generate_debug_file and app.while_speaking_data != None:
             app.while_speaking_data = app.while_speaking_data + data
             app.count_to_write += 1
             if app.count_to_write >= 2:
@@ -251,8 +207,6 @@ def recieve_audio():
                     print("wrote example")
                     app.count_to_write = 0
                 app.while_speaking_data = None
-        # listen to input
-        # print("waiting")
         transcript = voice_handler.handle_input_byte_string(data_with_head)
         if transcript is None or transcript == "":
             print("nothing to transcript")
@@ -266,7 +220,7 @@ def recieve_audio():
 
 
     response = jsonify("Alright alright alright!")
-    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add('Access-Control-Allow-Origin', '*')
 
     return response
 
