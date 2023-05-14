@@ -1,28 +1,19 @@
-<form id="myForm">
-  <label for="text_input">Enter text:</label>
-  <textarea type="text" id="text_input" name="text_input"></textarea>
-  <button type="submit">Submit</button>
-</form>
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Call Management</title>
+    <script type="module" crossorigin src="/static/assets/index-becad839.js"></script>
+    <link rel="stylesheet" href="/static/assets/index-1d3f8eee.css">
+  </head>
+  <body>
+    <div id="app"></div>
+    <button id="call_btn">start call</button>
+    <button id="close_btn">stop call</button>
+    <div id="audio_container"></div>
+  </body>
+</html>
 
-<!-- <audio controls>
-  <source src="/stream_mp3" type="audio/x-wav">
-</audio> -->
 
-<button id="audio_btn">get reponse audio</button>
-<button id="micro_btn">start microphone</button>
-<button id="call_btn">start call</button>
-<button id="close_btn">stop call</button>
-
-<div id="audio_container"></div>
-
-<!-- <script type="module">
-  import { io } from "https://cdn.socket.io/4.3.2/socket.io.esm.min.js";
-  const { io } = require("socket.io-client");
-</script>
- -->
-
-<!--load script-->
-<!-- <script src="/static/socket.io.js"></script> -->
-<!-- use 5.5.6 or any other version on cdnjs -->
-<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/RecordRTC/5.5.6/RecordRTC.js"></script> -->
-<script src="/static/script.js"></script>
