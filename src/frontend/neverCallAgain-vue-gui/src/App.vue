@@ -57,6 +57,7 @@ import { Slide } from "vue3-burger-menu";
 import Call from "./models/Call";
 
 // border: 1px solid black;
+let micProcessor = null;
 
 export default {
   name: "App",
@@ -142,7 +143,7 @@ export default {
         .then((response) => {
           console.log("started call");
           this.registerAudioPlayBackStream();
-          this.handleMicStream();
+          this.registerMircophone();
         })
         .catch((error) => console.error(error));
 
@@ -174,17 +175,34 @@ export default {
         audio.play();
       });
     },
-    handleMicStream(streamObj) {
-      // keep the context in a global variable
-      stream = streamObj;
+    registerMircophone() {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        const audioContext = new AudioContext({ sampleRate: 16000 });
 
-      input = audioContext.createMediaStreamSource(stream);
+        const micSource = audioContext.createMediaStreamSource(stream);
+        globalAudioCtx = audioContext;
 
-      input.connect(processor);
+        audioContext.audioWorklet
+          .addModule("./static/processor.js")
+          .then(() => {
+            const micProcessor = new AudioWorkletNode(
+              audioContext,
+              "my-worklet-processor"
+            );
+            micProcessor.port.onmessage = ({ data }) => {
+              var myData = data.audio_segement;
 
-      processor.onaudioprocess = (e) => {
-        microphoneProcess(e); // receives data from microphone
-      };
+              // console.log("recieved data of" + myData.length)
+
+              fetch("/recieve_audio", {
+                method: "POST",
+                body: myData,
+              });
+            };
+            micSource.connect(micProcessor);
+            micProcessor.connect(audioContext.destination);
+          });
+      });
     },
   },
 };
