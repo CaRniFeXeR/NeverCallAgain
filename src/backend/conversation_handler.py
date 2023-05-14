@@ -58,7 +58,7 @@ class ConversationHandler:
 
         paragraph_text = paragraph_sep.join(text_list)
         logger.debug(f"Returning paragraph: {paragraph_text}")
-        return paragraph_sep.join(paragraph_text)
+        return paragraph_text
 
     def build_conversation(self, role_prefixes: Tuple[str, str] = ("A: ", "B: "), paragraph_sep: str = " ") -> str:
         def _build_graphraph(paragraph_list: List[str], role_prefix: str) -> str:
