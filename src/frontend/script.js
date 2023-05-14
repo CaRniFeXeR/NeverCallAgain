@@ -30,15 +30,15 @@ function registerAudioPlayBackStream() {
   var div = document.getElementById("audio_container")
 
   div.innerHTML = `
-    <audio controls="">
+    <audio controls="" id="audio_ctrl">
     <source id="audio_src" type="audio/x-wav" sampleRate=22050 src="/stream_audio">
     </audio>  
   `
 
-  const audio = document.getElementById("audio_src");
+  const audio = document.getElementById("audio_ctrl");
 
   // Wait until the audio is loaded and ready to play
-  audio.addEventListener("loadedmetadata", function() {
+  audio.addEventListener("canplay", function() {
     console.log("can play")
     audio.play();
   });
@@ -87,6 +87,13 @@ function registerMircophone() {
           method: "POST",
           body: myData,
         });
+
+      //auto start playback element
+      // var audio = document.getElementById("audio_src");
+
+      // if (audio.readyState >= 2 && audio.paused) {
+      //   audio.play();
+      // }
 
       };
       micSource.connect(micProcessor);
