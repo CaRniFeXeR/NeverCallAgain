@@ -69,34 +69,22 @@ function registerMircophone() {
 
   navigator.mediaDevices.getUserMedia({ audio: true })
 .then(stream => {
-  const audioContext = new AudioContext({sampleRate: 16000, blockSize: 16000});
+  const audioContext = new AudioContext({sampleRate: 16000});
   const micSource = audioContext.createMediaStreamSource(stream);
 
   audioContext.audioWorklet.addModule('./static/processor.js')
     .then(() => {
       const micProcessor = new AudioWorkletNode(audioContext, 'my-worklet-processor');
       micProcessor.port.onmessage =  ({ data }) => {
-        var myData = data.outputData;
-        // console.log("got data" + myData.length)
+        var myData = data.audio_segement;
 
-        buffer_arry = combinedArray = new Int32Array([
-          ...buffer_arry,
-          ...myData,
-        ]);
-        buffer_count += 1;
+        console.log("recieved data of" + myData.length)
+        
+        fetch("/recieve_audio", {
+          method: "POST",
+          body: myData,
+        });
 
-        if (buffer_count == 120) {
-          //40 times 128 samples is 0.32s with 16kHz sample rate
-          //100 times 128 samples is 0.8s with 16kHz sample rate
-          fetch("/recieve_audio", {
-            method: "POST",
-            body: buffer_arry,
-          });
-
-          buffer_count = 0;
-          console.log("send audio of size" + buffer_arry.length)
-          buffer_arry = new Int32Array();
-        }
       };
       micSource.connect(micProcessor);
       micProcessor.connect(audioContext.destination);
