@@ -112,10 +112,10 @@ export default {
 
   data() {
     return {
-      call_title: "",
-      receiver_name: "",
-      receiver_telnr: "",
-      initiator_name: "",
+      call_title: "Zahnarzt",
+      receiver_name: "Deim",
+      receiver_telnr: "0123 1234567",
+      initiator_name: "Tobias Weber",
       possibleDates: [],
       datetimeCount: 1,
     };

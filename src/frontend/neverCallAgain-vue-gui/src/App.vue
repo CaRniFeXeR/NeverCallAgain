@@ -6,7 +6,7 @@
   >
     <div class="grid-item" style="display: flex">
       <div style="width: 70%">
-        <h2>Call Management</h2>
+        <h2 style="position: relative; left: 60px">Call Management</h2>
       </div>
       <div style="width: 30%"></div>
     </div>
@@ -49,6 +49,7 @@
 </template>
 
 <script>
+import axios from "axios";
 import CardDiv from "./components/CardDiv.vue";
 import AddCardButton from "./components/AddCardButton.vue";
 import CreateCall from "./components/CreateCall.vue";
@@ -56,6 +57,7 @@ import { Slide } from "vue3-burger-menu";
 import Call from "./models/Call";
 
 // border: 1px solid black;
+let micProcessor = null;
 
 export default {
   name: "App",
@@ -68,34 +70,18 @@ export default {
   data() {
     return {
       inputText: "",
-      baseUrlBackend: "http://localhost:5000/",
-
+      globalAudioCtx: null,
       //manages which div / components are currently getting displayed
       // 0 = display call overview; 1 = display call creation
       div_display_state: 0,
 
       //state: 0 = not rdy; 1 = pending; 2 = retrieved
-      calls: [
-        new Call(
-          "Test call",
-          2,
-          "Dr. Palkovits",
-          "01234 110101010",
-          "Werner Faymann",
-          [
-            {
-              selectedDate: "03.02.2032",
-              selectedStartTime: "08:00",
-              selectedEndTime: "10:00",
-            },
-          ],
-          "21.05.2023, 14:00"
-        ),
-      ],
+      calls: [],
       calls_to_display: Array,
     };
   },
-  created() {
+  async created() {
+    await this.fetchCalls();
     this.calls_to_display = this.calls;
   },
 
@@ -117,32 +103,105 @@ export default {
 
     displayCreateCallComponent() {
       this.div_display_state = 1;
-      console.log("create new call");
+    },
+
+    async fetchCalls() {
+      try {
+        const response = await axios.get("/calls");
+        const callData = response.data;
+        const calls = callData.map((callJson) => {
+          const callObj = JSON.parse(callJson);
+          return new Call(
+            callObj.title,
+            parseInt(callObj.state),
+            callObj.receiverName,
+            callObj.receiverPhonenr,
+            callObj.initiatorName,
+            callObj.possibleDatetimes,
+            callObj.result
+          );
+        });
+        this.calls = calls;
+        this.calls_to_display = this.calls;
+      } catch (error) {
+        console.error(error);
+      }
     },
 
     async createCall(call) {
-      console.log("schedule appointment with param: ", call);
       this.div_display_state = 0;
-      this.calls.push(call);
-      this.calls_to_display = this.calls;
 
-      let url = this.baseUrlBackend + "start_call";
-
-      const response = await fetch(url, {
+      const options = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(call),
-      });
+      };
 
-      return response;
+      await fetch("/start_call", options)
+        .then((response) => {
+          console.log("started call");
+          this.registerAudioPlayBackStream();
+          this.registerMircophone();
+        })
+        .catch((error) => console.error(error));
+
+      await this.fetchCalls();
+
+      return;
     },
 
     onlySaveCall(call) {
       this.div_display_state = 0;
       this.calls.push(call);
       this.calls_to_display = this.calls;
+    },
+
+    registerAudioPlayBackStream() {
+      var div = document.getElementById("audio_container");
+
+      div.innerHTML = `
+        <audio controls="" id="audio_ctrl">
+        <source id="audio_src" type="audio/x-wav" sampleRate=22050 src="/stream_audio">
+        </audio>  
+      `;
+
+      const audio = document.getElementById("audio_ctrl");
+
+      // Wait until the audio is loaded and ready to play
+      audio.addEventListener("canplay", function () {
+        console.log("can play");
+        audio.play();
+      });
+    },
+    registerMircophone() {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        const audioContext = new AudioContext({ sampleRate: 16000 });
+
+        const micSource = audioContext.createMediaStreamSource(stream);
+
+        audioContext.audioWorklet
+          .addModule("./static/processor.js")
+          .then(() => {
+            const micProcessor = new AudioWorkletNode(
+              audioContext,
+              "my-worklet-processor"
+            );
+            micProcessor.port.onmessage = ({ data }) => {
+              var myData = data.audio_segement;
+
+              // console.log("recieved data of" + myData.length)
+
+              fetch("/recieve_audio", {
+                method: "POST",
+                body: myData,
+              });
+            };
+            micSource.connect(micProcessor);
+            micProcessor.connect(audioContext.destination);
+          });
+      });
     },
   },
 };

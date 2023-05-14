@@ -1,29 +1,6 @@
 let globalAudioCtx = null
 
-const form = document.getElementById("myForm");
-form.addEventListener("submit", function (event) {
-  event.preventDefault(); // prevent the default form submission behavior
-
-  const input = document.getElementById("text_input");
-  const inputValue = input.value;
-
-  const data = { text_input: inputValue };
-  const options = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  };
-
-  fetch("/submit", options)
-    .then((response) => response.json())
-    .then((data) => console.log(data))
-    .catch((error) => console.error(error));
-});
-
 // onclick button with id audio_click
-
 const btn = document.getElementById("audio_btn");
 
 function registerAudioPlayBackStream() {
@@ -50,21 +27,6 @@ btn.onclick = function () {
 
 const micro_btn = document.getElementById("micro_btn");
 
-function handleMicStream(streamObj) {
-  // keep the context in a global variable
-  stream = streamObj;
-
-  input = audioContext.createMediaStreamSource(stream);
-
-  input.connect(processor);
-
-  processor.onaudioprocess = (e) => {
-    microphoneProcess(e); // receives data from microphone
-  };
-}
-
-
-
 function registerMircophone() {
 
   navigator.mediaDevices.getUserMedia({ audio: true })
@@ -77,7 +39,7 @@ function registerMircophone() {
 
   audioContext.audioWorklet.addModule('./static/processor.js')
     .then(() => {
-      const micProcessor = new AudioWorkletNode(audioContext, 'my-worklet-processor');
+      micProcessor = new AudioWorkletNode(audioContext, 'my-worklet-processor');
       micProcessor.port.onmessage =  ({ data }) => {
         var myData = data.audio_segement;
 
@@ -87,13 +49,6 @@ function registerMircophone() {
           method: "POST",
           body: myData,
         });
-
-      //auto start playback element
-      // var audio = document.getElementById("audio_src");
-
-      // if (audio.readyState >= 2 && audio.paused) {
-      //   audio.play();
-      // }
 
       };
       micSource.connect(micProcessor);

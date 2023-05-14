@@ -3,10 +3,14 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from flask_cors import CORS
 import re
 import prompt_creation_helpers
+from db_handler import DB_Handler
+from call_model import Call
+import json
 
 
 app = Flask(__name__)
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
+db_handler = DB_Handler()
 
 
 @app.route("/")
@@ -18,6 +22,21 @@ def home():
 @app.route("/data_management")
 def data_management():
     return "Data management page"
+
+
+@app.route("/add_call", methods=["POST"])
+def add_call():
+    print(request.headers)
+    call_json = request.get_json()
+    new_call = Call(**call_json)
+    db_handler.insertNewCall(new_call)
+    return "Call erfolgreich erstellt", 201
+
+
+@app.route("/calls", methods=["GET"])
+def get_calls():
+    calls = db_handler.getAllCalls()
+    return [json.dumps(call.__dict__) for call in calls]
 
 
 @app.route("/start_call", methods=["POST"])
