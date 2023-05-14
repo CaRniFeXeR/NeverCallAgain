@@ -1,3 +1,4 @@
+import json
 import os
 import queue
 import time
@@ -29,6 +30,7 @@ chatgpt = ChatGPT()
 def _init_conv():
     app.chunk_handler = ChunkHandler()
     app.conv_handler = ConversationHandler()
+    app.db_handler = DB_Handler()
     app.while_speaking_data = get_wave_header(sample_rate=16000)
     app.count_to_write = 0
     app.data_queue = queue.Queue()
@@ -73,25 +75,18 @@ def reset_conv():
 def stream_audio():
     return Response(_generate_audio(), mimetype="audio/x-wav")
 
+@app.route("/calls", methods=["GET"])
+def get_calls():
+    calls = app.db_handler.getAllCalls()
+    return [json.dumps(call.__dict__) for call in calls]
 
-@app.route("/submit", methods=["POST"])
-def submit():
-    data = request.json
-    text_input = data["text_input"]
-    app.writing_data = True
-    app.data_queue.put(get_wave_header())
-    for delta in chatgpt.get_response_by_delimiter(text_input):
-        audio_segment = tts.text_to_speech_numpy_pmc(delta)
-        print(delta)
-        bytes = audio_segment.tobytes()
-
-        _write_to_queue(bytes)
-    # print(result)
-    app.writing_data = False
-    print("app writing data set to false")
-
-    response = {"message": "Data received successfully"}
-    return jsonify(response)
+@app.route("/add_call", methods=["POST"])
+def add_call():
+    print(request.headers)
+    call_json = request.get_json()
+    new_call = Call(**call_json)
+    app.db_handler.insertNewCall(new_call)
+    return "Call erfolgreich erstellt", 201
 
 
 @app.route("/start_call", methods=["POST"])
@@ -99,8 +94,10 @@ def start_call():
     app.writing_data = True
     app.conv_started = False
     app.chunk_handler.start_call()
-    # data = request.json
-    data = {'title': 'asdadasd', 'state': 1, 'receiverName': 'Deim', 'receiverPhonenr': 'dfdf', 'initiatorName': 'Hoffmann', 'possibleDatetimes': [{'selectedDate': '2023-05-20', 'selectedStartTime': '08:00', 'selectedEndTime': '12:00'}], 'result': None}
+    data = request.json
+    # data = {'title': 'asdadasd', 'state': 1, 'receiverName': 'Deim', 'receiverPhonenr': 'dfdf', 'initiatorName': 'Hoffmann', 'possibleDatetimes': [{'selectedDate': '2023-05-20', 'selectedStartTime': '08:00', 'selectedEndTime': '12:00'}], 'result': None}
+    new_call = Call(**data)
+    app.db_handler.insertNewCall(new_call)
     date_app_req = prompt_creation_helpers.date_to_string(
         data["possibleDatetimes"][0]["selectedDate"]
     )
@@ -232,4 +229,4 @@ if __name__ == "__main__":
         log_file_path=os.environ.get("LOG_FILE_PATH", "./log_backend.log"),
         overwrite=True,
     )
-    app.run(host="172.30.234.161")  # os.environ.get("FLASK_HOST_IP", "172.30.234.161"))
+    # app.run(host="172.30.229.11")  # os.environ.get("FLASK_HOST_IP", "172.30.234.161"))
