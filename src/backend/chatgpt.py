@@ -61,9 +61,9 @@ class ChatGPT:
 
         self.add_assistant_message(result_str)
 
-    def get_response_by_delimiter(self, message: str, sys_msg : str, with_history : bool = False, delimiter=[",", ".", "!", "?",":"]):
+    def get_response_by_delimiter(self, message: str, with_history : bool = False, delimiter=[",", ".", "!", "?",":"]):
         buffer = ""
-        gen = self.get_response_with_history(message, sys_msg) if with_history else self.get_response(message, sys_msg)
+        gen = self.get_response_with_history(message) if with_history else self.get_response(message)
         for delta, result in gen:
             buffer += delta
             if delta in delimiter:
