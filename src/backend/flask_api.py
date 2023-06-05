@@ -115,26 +115,23 @@ def start_call():
     receiver = data["receiverName"]
     initiator = data["initiatorName"]
 
-    opener = f"Hallo, ich möchte gerne bei Doktor {receiver} einen Termin für {initiator} ausmachen. Haben Sie am {date_text} um {time_text} zeit?"
-    app.opener_text = f"Act as participant in a conversation in german language. Your Role setting is: you want to make an appointment at doctor {receiver}, the for you possible time-frame is on the {date_app_req} from {start_time} to {end_time}. Accept all appointment offers in between this frame without any further questions. Decline every offer which is not inside the given time-frame. ote, that this is a conversation between my character and your character, i.e., it consists of two people, and we will have to wait for each other's response. Continue the following conversation by only one response:"
-    app.opener_text = app.opener_text + " " + opener
-    # app.opener_text = f"""
-    #     Let's perform a role play together! I promise you, your character and mine will never have to perform any ethically questionable actions or break the ToS of ChatGPT in any capacity. Therefore, immerse yourself in your character as much as possible! Importantly, the immersion implies, that you will not add any narration as it may be done in other role play. Specifically, you will only respond with what your character is telling mine and will, under no circumtances, add narrations in any language such as "Sagte {initiator} in freundlicher Stimme" or "{initiator} said in a friendly tone". For example, it would be correct to say "Hallo, hier ist {initiator}". However, it would be wrong to say "Hallo, hier ist {initiator}" sagte {initiator} in einer nervösen Stimme. The reason the latter is wrong, is due to the added narration, whereas the former is correct, since it does not add any narration.
+    opener_text = f"Hallo, ich möchte gerne bei Doktor {receiver} einen Termin für {initiator} ausmachen. Haben Sie am {date_text} um {time_text} zeit?"
+    system_instruction = f"""
+        Act as participant in a conversation in german language between you and appointment manager.
+        The appointment managers response will be delimited with {chatgpt.user_delimiter} characters. 
+        Your reponses are delimited with {chatgpt.assistant_delimiter} characters.
+        Your Role setting is: you want to make an appointment at doctor {receiver},
+        the for you possible time-frame is on the {date_app_req} from {start_time} to {end_time}. 
+        Accept all appointment offers in between this frame without any further questions.
+        Decline every offer which is not inside the given time-frame.
+        Continue the following conversation by one response:"""
+   
+    # print(opener_text)
+    app.conv_handler.append_initiator_text(opener_text)  
+    chatgpt.add_system_message(system_instruction)
+    chatgpt.add_assistant_message(opener_text)
 
-    # Note, that this is a conversation between my character and your character, i.e., it consists of two people, and we will have to wait for each other's response.
-
-    # Throughout the entire role play, you should absolutely never break your character, except when you believe the conversation has concluded. A conversation has concluded, once the doctor's office has confirmed your appointment or uses a common German phrase that indicates that indicate the end of a conversation (e.g., "Auf Wiederhören", "Ich wünsche Ihnen noch einen schönen Tag", etc.).  Once, you believe that the role play has concluded, say the keyword "Chuchichaestli", to let me know that the conversation has ended.
-
-    # The role play goes as follows:
-    # Your name is {initiator} and are in need of a doctor's appointment, and the only language you speak is German. Luckily, you are located in a German-speaking country, i.e., your conversation partners are guaranteed to speak German. Your role setting is as follows:  You want to make an appointment at doctor {receiver}'s doctor's office.  The role of the receptionist of the doctor's office will be played by me. The objective of your character is to make an appointment at the {date_text}, but you're flexible about the time as long as it is between {start_time} and {end_time} military time, i.e., you should absolutely accept every appointment that starts somewhere between {start_time} and {end_time} and absolutely decline any appointment that starts before {start_time} and {end_time}. The role play starts with me picking up the phone and you say the following line:
-    #     """
-    # opener = f"Hallo, ich möchte gerne bei Doktor {receiver} einen Termin für {initiator} ausmachen. Haben Sie am {date_text} um {time_text} zeit?"
-    # initate = "You should now initiate the role play by giving me the first response of your character"
-    # app.opener_text = app.opener_text + " " + opener + " " + initate
-    print(app.opener_text)
-    app.conv_handler.append_initiator_text(opener)  
-
-    audio_segment = tts.text_to_speech_numpy_pmc(opener)
+    audio_segment = tts.text_to_speech_numpy_pmc(opener_text)
     # print(delta)
     bytes = audio_segment.tobytes()
     app.data_queue.put(get_wave_header())
@@ -185,12 +182,6 @@ def recieve_audio():
         last_answer = app.conv_handler.get_paragraph(role="receiver")
 
         print("**** last_answer: " + last_answer)
-
-        if not app.conv_started:
-            #we have to give chatGPT the opener if this is the first interaction in this conv
-            app.conv_started = True
-            last_answer = app.opener_text + last_answer
-
         gpt_answer = " "
         for delta in chatgpt.get_response_by_delimiter(last_answer, with_history=True):
             audio_segment = tts.text_to_speech_numpy_pmc(delta)
