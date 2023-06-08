@@ -4,7 +4,7 @@ from typing import Generator, Tuple
 import openai
 
 class ChatGPT:
-    def __init__(self, user_delimiter = "####", assistant_delimiter = "+++") -> None:
+    def __init__(self, user_delimiter = "#u#", assistant_delimiter = "#a#") -> None:
         self.user_delimiter = user_delimiter
         self.assistant_delimiter = assistant_delimiter
         self.messages = []
@@ -26,7 +26,7 @@ class ChatGPT:
             model="gpt-3.5-turbo",
             messages=msgs,
             stream=True,
-            temperature=0.3
+            temperature=0.2
         )
 
         result_str = ""
@@ -36,7 +36,7 @@ class ChatGPT:
 
             if "content" in response.keys():
                 delta = response["content"]
-                result_str += " " + delta
+                result_str += delta.replace(self.assistant_delimiter, "")
                 yield (delta, result_str)
 
     def get_response_with_history(self, message: str) -> Generator[Tuple[str, str], None, None]:
@@ -56,7 +56,7 @@ class ChatGPT:
 
             if "content" in response.keys():
                 delta = response["content"]
-                result_str += " " + delta
+                result_str += " " + delta.replace(self.assistant_delimiter, "")
                 yield (delta, result_str)
 
         self.add_assistant_message(result_str)
