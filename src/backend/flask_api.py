@@ -21,7 +21,7 @@ logger = def_logger.getChild(__name__)
 app = Flask(__name__, static_folder="./../frontend")
 
 
-generate_debug_file = False
+generate_debug_file = True
 
 tts = TextToSpeech()
 voice_handler = VoiceHandler()
@@ -31,7 +31,9 @@ def _init_conv():
     app.chunk_handler = ChunkHandler()
     app.conv_handler = ConversationHandler("conversation.md")
     app.db_handler = DB_Handler()
-    app.while_speaking_data = get_wave_header(sample_rate=16000)
+    # app.while_speaking_data = get_wave_header(sample_rate=16000)
+    # set while_speaking_data to empty byte string
+    app.while_speaking_data = b""
     app.count_to_write = 0
     app.data_queue = queue.Queue()
     app.writing_data = False
@@ -160,7 +162,7 @@ def recieve_audio():
 
     data = request.data
 
-    data_with_head = get_wave_header(sample_rate=16000) + data
+    data_with_head = get_wave_header(sample_rate=16000, len_bytes=len(data)) + data
     data_np = np.frombuffer(data, dtype=np.int32)
 
     # print("chunk size", data_np.shape)
@@ -199,14 +201,14 @@ def recieve_audio():
 
 
     elif app.chunk_handler.state_machine.state == "listening":
-        if generate_debug_file and  app.while_speaking_data != None:
+        if generate_debug_file and app.count_to_write != -1:
             app.while_speaking_data = app.while_speaking_data + data
             app.count_to_write += 1
-            if app.count_to_write >= 2:
+            if app.count_to_write >= 3:
                 with open("listening_test.wav", "wb") as f:
-                    f.write(app.while_speaking_data)
+                    f.write(get_wave_header(1, 32, 16000, len(app.while_speaking_data)) + app.while_speaking_data)
                     print("wrote example")
-                    app.count_to_write = 0
+                    app.count_to_write = -1
                 app.while_speaking_data = None
         transcript = voice_handler.handle_input_byte_string(data_with_head)
         if transcript is None or transcript == "":
