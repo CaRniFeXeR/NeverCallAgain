@@ -111,25 +111,26 @@ def start_call():
         data["possibleDatetimes"][0]["selectedDate"]
     )
 
-    time_text = prompt_creation_helpers.uhrzeit_text(
-        data["possibleDatetimes"][0]["selectedStartTime"]
-    )
+    start_time_text = prompt_creation_helpers.uhrzeit_text(start_time)
+
+    end_time_text = prompt_creation_helpers.uhrzeit_text(end_time)
 
     receiver = data["receiverName"]
     initiator = data["initiatorName"]
 
-    opener_text = f"Hallo, ich möchte gerne bei Doktor {receiver} einen Termin für {initiator} ausmachen. Haben Sie am {date_text} um {time_text} zeit?"
+    opener_text = f"Hallo, ich möchte gerne bei Doktor {receiver} einen Termin für {initiator} ausmachen. Haben Sie am {date_text} um {start_time_text} zeit?"
     system_instruction = f"""
         Act as participant in a conversation in german language between you and appointment manager.
-        The appointment managers response will be delimited with {chatgpt.user_delimiter} characters. 
-        Your reponses are delimited with {chatgpt.assistant_delimiter} characters.
+        The appointment managers responses will be delimited with {chatgpt.user_delimiter} characters. 
+        Any previous reponses of you are delimited with {chatgpt.assistant_delimiter} characters.
         Your Role setting is: you want to make an appointment at doctor {receiver},
-        the for you possible time-frame is on the {date_app_req} from {start_time} to {end_time}. 
-        Accept all appointment offers in between this frame without any further questions.
-        Decline every offer which is not inside the given time-frame.
-        Continue the following conversation by one response:"""
+        the for you possible time-frame is on the {date_app_req} from {start_time_text} to {end_time_text}. 
+        Accept all appointment offers in between this time-frame without any further questions. 
+        For instance, if your possible time-frame is from 2pm to 4pm, accept an offer at 2:30pm or any offer between 2pm and 4pm.
+        Decline every offer which is not within the given time-frame. Don't forget that time in german is written in the 24h format.
+        Continue the following conversation by one response of you, the caller. Do not write any repsonse of the appointment manager."""
    
-    # print(opener_text)
+    print(system_instruction)
     app.conv_handler.append_initiator_text(opener_text)  
     chatgpt.add_system_message(system_instruction)
     chatgpt.add_assistant_message(opener_text)
@@ -211,8 +212,9 @@ def recieve_audio():
             print("**** user_answer: " + transcript)
             gpt_answer = " "
             for delta in chatgpt.get_response_by_delimiter(transcript, with_history=True):
-                audio_segment = tts.text_to_speech_numpy_pmc(delta)
-                gpt_answer += " " + delta
+                res_delta = delta.replace(" a ", "").replace("#a #","").replace(chatgpt.assistant_delimiter, "").replace("#","")
+                audio_segment = tts.text_to_speech_numpy_pmc(res_delta)
+                gpt_answer += " " + res_delta
                 bytes = audio_segment.tobytes()
                 _write_to_queue(bytes)
 
@@ -235,7 +237,7 @@ def recieve_audio():
 if __name__ == "__main__":
     prepare_log_file(log_file_path=os.environ.get("LOG_FILE_PATH", "./log_backend.log"), overwrite=True)
     # app.run(host=os.environ.get("FLASK_HOST_IP", "localhost"))
-    app.run(host="localhost")
+    app.run(host='0.0.0.0', port=5000)
     prepare_log_file(
         log_file_path=os.environ.get("LOG_FILE_PATH", "./log_backend.log"),
         overwrite=True,

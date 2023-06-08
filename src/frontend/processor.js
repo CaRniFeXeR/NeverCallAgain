@@ -6,6 +6,7 @@ class MyWorkletProcessor extends AudioWorkletProcessor {
       this.port.onmessage = this.handleMessage.bind(this);
       this.buffer_count = 0
       this.buffer_arry = new Int32Array()
+      console.log("worklet processor created")
     }
 
     handleMessage(event) {
@@ -32,7 +33,7 @@ class MyWorkletProcessor extends AudioWorkletProcessor {
           ]);
           this.buffer_count += 1;
 
-          if (this.buffer_count == 140) {
+          if (this.buffer_count == 50) {
             //40 times 128 samples is 0.32s with 16kHz sample rate
             //100 times 128 samples is 0.8s with 16kHz sample rate
             const audio_segement = this.buffer_arry

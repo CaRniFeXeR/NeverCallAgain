@@ -20,6 +20,7 @@ def _detect_silence(audio_chunk, silence_threshold):
     avg_energy = _get_energy(audio_chunk)
     # print(max_energy)
     # print("ratio: ", avg_energy / max_energy)
+    print("avg energy: ", avg_energy)
     if avg_energy < silence_threshold:
         return True
 
@@ -51,7 +52,7 @@ class _StateMachine:
                     "call_interrupted"]
 
     # assuming 0.25 seconds per chunk, 1 second of silence is 4 chunks
-    def __init__(self, max_silence_counter: int = 1, max_speaker_counter: int = 1) -> None:
+    def __init__(self, max_silence_counter: int = 3, max_speaker_counter: int = 1) -> None:
         self.state = "call_pending"
         # "listening" as a toggle, we check each "speech chunk" if the opposite is speaking
         #  if we are in "listening", we transition to "speaking", once the counter reaches max_counter_silence
@@ -118,7 +119,7 @@ class ChunkHandler:
             chunk_config = dict()
         self.state_machine = _StateMachine(
             **chunk_config.get("state_machine_config")) if chunk_config else _StateMachine()
-        self.wait_threshold = chunk_config.get("wait_threshold", 0.06)
+        self.wait_threshold = chunk_config.get("wait_threshold", 0.008)
         self.is_mono = chunk_config.get("is_mono", True)
         pv_access_key = os.environ.get("PICOVOICE_API_KEY")
         # assert pv_access_key, "PICOVOICE_API_KEY environment variable not set"

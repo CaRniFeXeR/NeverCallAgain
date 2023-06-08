@@ -11,10 +11,13 @@ class SpeechToText:
         # either use whisper small or medium
         self.model_pipe = pipeline(
             "automatic-speech-recognition",
-            model="bofenghuang/whisper-small-cv11-german",
-            device=device,
-            max_new_tokens=300
+            model="bofenghuang/whisper-medium-cv11-german",
+            device=device
+            # max_new_tokens=300
         )
+        self.model_pipe.model.config.forced_decoder_ids = self.model_pipe.tokenizer.get_decoder_prompt_ids(
+            language="de", task="transcribe")
+        self.model_pipe.model.eval()
 
     def speech_to_text(self, audio: np.ndarray):
         with torch.no_grad():
