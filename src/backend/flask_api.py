@@ -31,14 +31,15 @@ def _init_conv():
     app.chunk_handler = ChunkHandler()
     app.conv_handler = ConversationHandler("conversation.md")
     app.db_handler = DB_Handler()
-    # app.while_speaking_data = get_wave_header(sample_rate=16000)
-    # set while_speaking_data to empty byte string
-    app.while_speaking_data = b""
+    app.listening_audio = b""
     app.count_to_write = 0
     app.data_queue = queue.Queue()
     app.writing_data = False
     app.conv_started = False
     app.opener_text = ""
+
+def _get_listening_audio() -> bytes:
+    return get_wave_header(1, 32, 16000, len(app.listening_audio)) + app.listening_audio
 
 _init_conv()
 
@@ -162,7 +163,7 @@ def recieve_audio():
 
     data = request.data
 
-    data_with_head = get_wave_header(sample_rate=16000, len_bytes=len(data)) + data
+    # data_with_head = get_wave_header(sample_rate=16000, len_bytes=len(data)) + data
     data_np = np.frombuffer(data, dtype=np.int32)
 
     # print("chunk size", data_np.shape)
@@ -179,47 +180,50 @@ def recieve_audio():
         # app.chunk_handler.transition_to_wait()
         # print("from start_opener_speaking to wait")
         pass
-    elif app.chunk_handler.state_machine.state == "start_speaking":
-
-        last_answer = app.conv_handler.get_paragraph(role="receiver")
-
-        print("**** last_answer: " + last_answer)
-        gpt_answer = " "
-        for delta in chatgpt.get_response_by_delimiter(last_answer, with_history=True):
-            audio_segment = tts.text_to_speech_numpy_pmc(delta)
-            gpt_answer += " " + delta
-            bytes = audio_segment.tobytes()
-            _write_to_queue(bytes)
-
-        # app.chunk_handler.transition_to_wait()
-        app.conv_handler.append_initiator_text(gpt_answer)
-        print("******** gptanswer *****  " + gpt_answer)
-
-    elif app.chunk_handler.state_machine.state == "speaking":
-        pass
-        #when we are still in speaking mode we don't have to do anything
-
 
     elif app.chunk_handler.state_machine.state == "listening":
+        # we detected speech and now are listening to the other person
+        app.listening_audio = app.listening_audio + data
+
         if generate_debug_file and app.count_to_write != -1:
-            app.while_speaking_data = app.while_speaking_data + data
             app.count_to_write += 1
             if app.count_to_write >= 3:
                 with open("listening_test.wav", "wb") as f:
-                    f.write(get_wave_header(1, 32, 16000, len(app.while_speaking_data)) + app.while_speaking_data)
+                    f.write(_get_listening_audio())
                     print("wrote example")
                     app.count_to_write = -1
-                app.while_speaking_data = None
-        transcript = voice_handler.handle_input_byte_string(data_with_head)
+  
+        # while listening, send empty bytes
+        n_chunks = data_np.shape[0] // 2000
+        _write_to_queue(get_empty_wave_bytes(header=False, n_chunks=n_chunks))
+    elif app.chunk_handler.state_machine.state == "start_speaking":
+
+
+        transcript = voice_handler.handle_input_byte_string(_get_listening_audio())
+        app.listening_audio = b""
         if transcript is None or transcript == "":
             print("nothing to transcript")
         else:
             app.conv_handler.append_receiver_text(transcript)
 
             print("****\n****transcripted:        " + transcript)
-        # while listening, send empty bytes
-        n_chunks = data_np.shape[0] // 2000
-        _write_to_queue(get_empty_wave_bytes(header=False, n_chunks=n_chunks))
+
+            print("**** user_answer: " + transcript)
+            gpt_answer = " "
+            for delta in chatgpt.get_response_by_delimiter(transcript, with_history=True):
+                audio_segment = tts.text_to_speech_numpy_pmc(delta)
+                gpt_answer += " " + delta
+                bytes = audio_segment.tobytes()
+                _write_to_queue(bytes)
+
+            # app.chunk_handler.transition_to_wait()
+            app.conv_handler.append_initiator_text(gpt_answer)
+            print("******** assistance answer *****  " + gpt_answer)
+
+    elif app.chunk_handler.state_machine.state == "speaking":
+        pass
+        #when we are still in speaking mode we don't have to do anything
+
 
 
     response = jsonify("Alright alright alright!")

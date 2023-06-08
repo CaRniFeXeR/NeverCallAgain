@@ -32,7 +32,7 @@ class MyWorkletProcessor extends AudioWorkletProcessor {
           ]);
           this.buffer_count += 1;
 
-          if (this.buffer_count == 120) {
+          if (this.buffer_count == 140) {
             //40 times 128 samples is 0.32s with 16kHz sample rate
             //100 times 128 samples is 0.8s with 16kHz sample rate
             const audio_segement = this.buffer_arry
